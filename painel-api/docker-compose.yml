@@ -1,0 +1,11 @@
+services:
+  painel-api:
+    build:
+      context: ..
+      dockerfile: painel-api/Dockerfile
+    container_name: painel_api
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env

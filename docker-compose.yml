@@ -1,0 +1,7 @@
+services:
+  scheduler:
+    build: .
+    container_name: apscheduler_app
+    restart: always   # garante que sempre reinicie
+    env_file:
+      - .env

@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Análise por Cliente — Controle de Campanhas</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0d0f12;--surface:#161a1f;--surface2:#1c2128;--surface3:#242b34;
+    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+    --text:#e8ecf0;--text2:#8b94a0;--text3:#5a636e;
+    --green:#22c55e;--green-dim:rgba(34,197,94,0.12);
+    --blue:#3b82f6;--blue-dim:rgba(59,130,246,0.12);
+    --amber:#f59e0b;--amber-dim:rgba(245,158,11,0.12);
+    --red:#ef4444;--red-dim:rgba(239,68,68,0.12);
+    --purple:#a855f7;--purple-dim:rgba(168,85,247,0.12);
+    --radius:10px;--radius-lg:16px;
+  }
+  body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .header-logo{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600}
+  .header-logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .header-right{display:flex;align-items:center;gap:10px}
+  .header-nav-link{font-size:13px;color:var(--text2);text-decoration:none;padding:7px 14px;border-radius:var(--radius);border:1px solid var(--border);transition:all 0.15s;background:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+  .header-nav-link:hover{background:var(--surface3);color:var(--text)}
+
+  .main{padding:24px 28px 40px;display:flex;flex-direction:column;gap:18px;max-width:1300px;width:100%;margin:0 auto}
+
+  .filters-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px}
+  .search-input{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none}
+  select.search-input{cursor:pointer}
+  .periodo-tabs{display:flex;gap:6px}
+  .periodo-tab{background:none;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;white-space:nowrap}
+  .periodo-tab:hover{background:var(--surface3);color:var(--text)}
+  .periodo-tab.active{background:var(--blue-dim);border-color:var(--blue);color:#93c5fd}
+  .btn-action{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:var(--radius);padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s}
+  .btn-action:hover{background:var(--surface3)}
+  .btn-action.primary{background:var(--blue-dim);border-color:var(--blue);color:#93c5fd}
+
+  .squad-tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .squad-tab{background:none;border:1px solid var(--border);color:var(--text2);border-radius:20px;padding:8px 18px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s}
+  .squad-tab:hover{background:var(--surface3);color:var(--text)}
+  .squad-tab.active{background:var(--blue-dim);border-color:var(--blue);color:#93c5fd}
+
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px}
+  .kpi-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px}
+  .kpi-value{font-size:24px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--text)}
+
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
+  .chart-title{font-size:13px;font-weight:600;margin-bottom:4px}
+  .chart-subtitle{font-size:11px;color:var(--text3);margin-bottom:14px}
+  .legend{display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+  .legend-swatch{width:10px;height:10px;border-radius:2px}
+
+  .grid-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+  .grid-table-wrap{overflow-x:auto}
+  .grid-table{width:100%;border-collapse:collapse;font-size:13px}
+  .grid-table th{text-align:right;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;font-size:10px;padding:12px 16px;border-bottom:1px solid var(--border2);white-space:nowrap;background:var(--surface2)}
+  .grid-table th:first-child,.grid-table td:first-child{text-align:left}
+  .grid-table td{padding:9px 16px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:12.5px}
+  .grid-table tr:last-child td{border-bottom:none}
+  .grid-table tr:hover td{background:var(--surface2);cursor:pointer}
+  .cell-conta{font-family:'DM Sans',sans-serif;font-weight:500;color:var(--text);text-align:left}
+  .grid-footer{padding:12px 18px;border-top:1px solid var(--border);font-size:12px;color:var(--text3)}
+  .empty-state{padding:50px 20px;text-align:center;color:var(--text3);font-size:13px}
+  .back-link{font-size:12.5px;color:var(--text2);cursor:pointer;text-decoration:underline dotted}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">
+    <div class="header-logo-icon">📈</div>
+    Controle de Campanhas
+  </div>
+  <div class="header-right">
+    <a class="header-nav-link" href="/dados.html">Dashboard</a>
+    <a class="header-nav-link" href="/">Config / Logs</a>
+  </div>
+</header>
+
+<main class="main">
+  <div class="filters-bar">
+    <div class="periodo-tabs" id="periodoTabs">
+      <button class="periodo-tab active" data-periodo="30dias" onclick="selecionarPeriodo('30dias')">Últimos 30 dias</button>
+      <button class="periodo-tab" data-periodo="geral" onclick="selecionarPeriodo('geral')">Geral</button>
+      <button class="periodo-tab" data-periodo="especifico" onclick="selecionarPeriodo('especifico')">Data específica</button>
+    </div>
+    <input type="date" id="dataInicio" class="search-input" style="display:none"/>
+    <input type="date" id="dataFim" class="search-input" style="display:none"/>
+    <button class="btn-action" id="btnAplicarData" style="display:none" onclick="carregar()">Aplicar</button>
+    <select id="selectCliente" class="search-input" style="flex:1;min-width:220px">
+      <option value="">Todas as contas</option>
+    </select>
+  </div>
+
+  <div id="conteudo">
+    <div class="empty-state">Carregando...</div>
+  </div>
+</main>
+
+<script>
+let periodoAtual = '30dias';
+let squadAtual = 'Onboarding';
+let visaoAtual = 'resumo'; // 'resumo' (cliente|enviados|avanços) ou 'detalhado'
+let contasResumo = null; // último /api/analise-contas carregado (pro select + visão por squad)
+
+function getConn() {
+  return {
+    url: (localStorage.getItem('painel_api_url') || '').replace(/\/$/, ''),
+    token: localStorage.getItem('painel_api_token') || '',
+  };
+}
+async function api(path) {
+  const c = getConn();
+  if (!c.url) throw new Error('configure a conexão na tela Dashboard primeiro');
+  const res = await fetch(c.url + path, { headers: { 'X-API-Token': c.token } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+}
+function escapeHtml(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatNumero(n) {
+  if (n === null || n === undefined) return '—';
+  return Number(n).toLocaleString('pt-BR');
+}
+function hoje() {
+  return new Date().toISOString().slice(0, 10);
+}
+function diasAtras(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+function selecionarPeriodo(periodo) {
+  periodoAtual = periodo;
+  document.querySelectorAll('.periodo-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.periodo === periodo));
+  const especifico = periodo === 'especifico';
+  document.getElementById('dataInicio').style.display = especifico ? '' : 'none';
+  document.getElementById('dataFim').style.display = especifico ? '' : 'none';
+  document.getElementById('btnAplicarData').style.display = especifico ? '' : 'none';
+  if (!especifico) carregar();
+}
+
+function periodoParams() {
+  if (periodoAtual === 'geral') return '';
+  if (periodoAtual === '30dias') return `&inicio=${diasAtras(30)}&fim=${hoje()}`;
+  const ini = document.getElementById('dataInicio').value;
+  const fim = document.getElementById('dataFim').value;
+  if (!ini || !fim) return null;
+  return `&inicio=${ini}&fim=${fim}`;
+}
+
+async function carregar() {
+  const conta = document.getElementById('selectCliente').value;
+  if (conta) {
+    await carregarCliente(conta);
+  } else {
+    await carregarVisaoGeral();
+  }
+}
+
+/* ===== Visão geral: todas as contas, por squad ===== */
+async function carregarVisaoGeral() {
+  const el = document.getElementById('conteudo');
+  const params = periodoParams();
+  if (params === null) return; // data específica incompleta, espera o usuário preencher
+  el.innerHTML = '<div class="empty-state">Carregando...</div>';
+  try {
+    const resp = await api('/api/analise-contas?' + params.replace(/^&/, ''));
+    contasResumo = resp.squads;
+    popularSelectClientes();
+    renderVisaoGeral();
+  } catch (e) {
+    el.innerHTML = `<div class="empty-state" style="color:var(--red)">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function popularSelectClientes() {
+  const select = document.getElementById('selectCliente');
+  const valorAtual = select.value;
+  select.innerHTML = '<option value="">Todas as contas</option>';
+  for (const squad of Object.keys(contasResumo)) {
+    const contas = contasResumo[squad];
+    if (!contas.length) continue;
+    const grupo = document.createElement('optgroup');
+    grupo.label = squad;
+    for (const c of contas.slice().sort((a, b) => a.conta.localeCompare(b.conta))) {
+      const opt = document.createElement('option');
+      opt.value = c.conta;
+      opt.textContent = c.conta;
+      grupo.appendChild(opt);
+    }
+    select.appendChild(grupo);
+  }
+  select.value = valorAtual;
+}
+
+function renderVisaoGeral() {
+  const el = document.getElementById('conteudo');
+  if (!contasResumo[squadAtual]) squadAtual = Object.keys(contasResumo)[0];
+  const linhas = contasResumo[squadAtual] || [];
+
+  let contatados = 0, entregues = 0, respostas = 0, avancos = 0;
+  for (const l of linhas) {
+    contatados += l.totalContacted || 0;
+    entregues += l.delivered || 0;
+    respostas += l.emailReplies || 0;
+    avancos += l.avancos || 0;
+  }
+
+  const nomesSquad = Object.keys(contasResumo);
+  const linhasOrdenadas = linhas.slice().sort((a, b) => b.emailsSent - a.emailsSent);
+
+  const tabelaResumo = `
+    <table class="grid-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Enviados</th>
+          <th>Avanços</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${linhasOrdenadas.length ? linhasOrdenadas.map(l => `
+          <tr onclick="selecionarCliente('${l.conta.replace(/'/g, "\\'")}')">
+            <td class="cell-conta">${escapeHtml(l.conta)}</td>
+            <td>${formatNumero(l.emailsSent)}</td>
+            <td>${l.avancos ? formatNumero(l.avancos) : '—'}</td>
+          </tr>
+        `).join('') : `<tr><td colspan="3"><div class="empty-state">Nenhuma conta com dados nesse período</div></td></tr>`}
+      </tbody>
+    </table>
+  `;
+
+  const tabelaDetalhada = `
+    <table class="grid-table">
+      <thead>
+        <tr>
+          <th>Conta</th>
+          <th>Dias disparo</th>
+          <th>Contatados</th>
+          <th>Enviados</th>
+          <th>Entregues</th>
+          <th>Aberturas</th>
+          <th>Taxa abertura</th>
+          <th>Respostas</th>
+          <th>Taxa resposta</th>
+          <th>Avanços</th>
+          <th>Última coleta</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${linhas.length ? linhas.slice().sort((a, b) => b.totalContacted - a.totalContacted).map(l => `
+          <tr onclick="selecionarCliente('${l.conta.replace(/'/g, "\\'")}')">
+            <td class="cell-conta">${escapeHtml(l.conta)}</td>
+            <td>${formatNumero(l.diasDisparos)}</td>
+            <td>${formatNumero(l.totalContacted)}</td>
+            <td>${formatNumero(l.emailsSent)}</td>
+            <td>${formatNumero(l.delivered)}</td>
+            <td>${formatNumero(l.emailOpens)}</td>
+            <td>${l.taxaAbertura === null ? '—' : l.taxaAbertura.toLocaleString('pt-BR') + '%'}</td>
+            <td>${formatNumero(l.emailReplies)}</td>
+            <td>${l.taxaResposta === null ? '—' : l.taxaResposta.toLocaleString('pt-BR') + '%'}</td>
+            <td>${l.avancos ? formatNumero(l.avancos) : '—'}</td>
+            <td>${escapeHtml(l.ultimaColeta || '—')}</td>
+          </tr>
+        `).join('') : `<tr><td colspan="11"><div class="empty-state">Nenhuma conta com dados nesse período</div></td></tr>`}
+      </tbody>
+    </table>
+  `;
+
+  el.innerHTML = `
+    <div class="squad-tabs" id="squadTabs" style="margin-bottom:4px">
+      ${nomesSquad.map(s => `<button class="squad-tab ${s === squadAtual ? 'active' : ''}" onclick="selecionarSquadAnalise('${s.replace(/'/g, "\\'")}')">${escapeHtml(s === 'SDR REMOTO' ? 'SDR Remoto' : s)} <span style="opacity:.6">(${contasResumo[s].length})</span></button>`).join('')}
+    </div>
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-label">Total contatados</div>
+        <div class="kpi-value">${formatNumero(contatados)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total entregues</div>
+        <div class="kpi-value">${formatNumero(entregues)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total de respostas</div>
+        <div class="kpi-value">${formatNumero(respostas)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Avanços no período</div>
+        <div class="kpi-value">${formatNumero(avancos)}</div>
+      </div>
+    </div>
+    <div class="periodo-tabs">
+      <button class="periodo-tab ${visaoAtual === 'resumo' ? 'active' : ''}" onclick="selecionarVisao('resumo')">Cliente | Enviados | Avanços</button>
+      <button class="periodo-tab ${visaoAtual === 'detalhado' ? 'active' : ''}" onclick="selecionarVisao('detalhado')">Detalhado</button>
+    </div>
+    <div class="grid-card">
+      <div class="grid-table-wrap">
+        ${visaoAtual === 'resumo' ? tabelaResumo : tabelaDetalhada}
+      </div>
+      <div class="grid-footer">${linhas.length} conta(s) no squad ${escapeHtml(squadAtual)} — clique numa linha pra ver o detalhe</div>
+    </div>
+  `;
+}
+
+function selecionarVisao(visao) {
+  visaoAtual = visao;
+  renderVisaoGeral();
+}
+
+function selecionarSquadAnalise(squad) {
+  squadAtual = squad;
+  renderVisaoGeral();
+}
+function selecionarCliente(conta) {
+  document.getElementById('selectCliente').value = conta;
+  carregarCliente(conta);
+}
+
+/* ===== Visão de um cliente específico ===== */
+function linhaSvg(dias, campo, cor, maxValor, largura, altura) {
+  if (!dias.length) return '';
+  const passo = dias.length > 1 ? largura / (dias.length - 1) : 0;
+  const pontos = dias.map((d, i) => {
+    const x = i * passo;
+    const y = altura - (maxValor ? (d[campo] / maxValor) * altura : 0);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<polyline points="${pontos}" fill="none" stroke="${cor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+}
+function barrasSvg(dias, campo, cor, maxValor, largura, altura) {
+  if (!dias.length) return '';
+  const larguraBarra = Math.max(2, (largura / dias.length) * 0.6);
+  return dias.map((d, i) => {
+    const passo = largura / dias.length;
+    const x = i * passo + (passo - larguraBarra) / 2;
+    const h = maxValor ? (d[campo] / maxValor) * altura : 0;
+    const y = altura - h;
+    if (!d[campo]) return '';
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${larguraBarra.toFixed(1)}" height="${Math.max(1, h).toFixed(1)}" rx="1" fill="${cor}"/>`;
+  }).join('');
+}
+
+async function carregarCliente(conta) {
+  const el = document.getElementById('conteudo');
+  const params = periodoParams();
+  if (params === null) return;
+  el.innerHTML = '<div class="empty-state">Carregando...</div>';
+  try {
+    const resp = await api(`/api/analise-cliente?conta=${encodeURIComponent(conta)}${params}`);
+    renderCliente(resp.conta, resp.dias);
+  } catch (e) {
+    el.innerHTML = `<div class="empty-state" style="color:var(--red)">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderCliente(conta, dias) {
+  const el = document.getElementById('conteudo');
+  const voltar = `<div class="back-link" onclick="voltarVisaoGeral()">← voltar pra todas as contas</div>`;
+  if (!dias.length) {
+    el.innerHTML = `${voltar}<div class="empty-state">Nenhum dado encontrado pra <b>${escapeHtml(conta)}</b> nesse período</div>`;
+    return;
+  }
+
+  const ultimo = dias[dias.length - 1];
+  const totalAvancos = dias.reduce((s, d) => s + (d.avancos || 0), 0);
+  const diasDisparo = dias.filter(d => d.emailsSent > 0).length;
+  const taxaAbertura = ultimo.cumEmailsSent ? (ultimo.cumEmailOpens / ultimo.cumEmailsSent * 100) : null;
+  const taxaResposta = ultimo.cumEmailsSent ? (ultimo.cumEmailReplies / ultimo.cumEmailsSent * 100) : null;
+
+  const largura = 1000, altura = 220;
+  const maxCumulativo = Math.max(...dias.map(d => d.cumEmailsSent), 1);
+  const maxAvancos = Math.max(...dias.map(d => d.avancos), 1);
+
+  el.innerHTML = `
+    ${voltar}
+    <div class="kpi-row" style="margin:12px 0 18px;grid-template-columns:repeat(6,1fr)">
+      <div class="kpi-card">
+        <div class="kpi-label">Dias de disparo</div>
+        <div class="kpi-value">${formatNumero(diasDisparo)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Enviados (acumulado)</div>
+        <div class="kpi-value">${formatNumero(ultimo.cumEmailsSent)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Taxa de abertura</div>
+        <div class="kpi-value">${taxaAbertura === null ? '—' : taxaAbertura.toLocaleString('pt-BR', {maximumFractionDigits: 2}) + '%'}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Taxa de resposta</div>
+        <div class="kpi-value">${taxaResposta === null ? '—' : taxaResposta.toLocaleString('pt-BR', {maximumFractionDigits: 2}) + '%'}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Respostas (acumulado)</div>
+        <div class="kpi-value">${formatNumero(ultimo.cumEmailReplies)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Avanços (período)</div>
+        <div class="kpi-value">${formatNumero(totalAvancos)}</div>
+      </div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:18px">
+      <div class="chart-title">${escapeHtml(conta)} — evolução acumulada</div>
+      <div class="chart-subtitle">${dias[0].data} até ${ultimo.data}</div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--blue)"></span>Enviado</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--green)"></span>Aberto</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--purple)"></span>Respondido</span>
+      </div>
+      <svg viewBox="0 0 ${largura} ${altura}" style="width:100%;height:${altura}px;display:block">
+        ${linhaSvg(dias, 'cumEmailsSent', 'var(--blue)', maxCumulativo, largura, altura)}
+        ${linhaSvg(dias, 'cumEmailOpens', 'var(--green)', maxCumulativo, largura, altura)}
+        ${linhaSvg(dias, 'cumEmailReplies', 'var(--purple)', maxCumulativo, largura, altura)}
+      </svg>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:18px">
+      <div class="chart-title">Avanços por dia</div>
+      <div class="chart-subtitle">quantidade registrada manualmente pelo time</div>
+      <svg viewBox="0 0 ${largura} 80" style="width:100%;height:80px;display:block">
+        ${barrasSvg(dias, 'avancos', 'var(--amber)', maxAvancos, largura, 80)}
+      </svg>
+    </div>
+
+    <div class="grid-card">
+      <div class="grid-table-wrap">
+        <table class="grid-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Enviado</th>
+              <th>Aberto</th>
+              <th>Respondido</th>
+              <th>Avanços</th>
+              <th>Enviado acum.</th>
+              <th>Aberto acum.</th>
+              <th>Respondido acum.</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dias.slice().reverse().map(d => `
+              <tr>
+                <td>${escapeHtml(d.data)}</td>
+                <td>${formatNumero(d.emailsSent)}</td>
+                <td>${formatNumero(d.emailOpens)}</td>
+                <td>${formatNumero(d.emailReplies)}</td>
+                <td>${d.avancos ? formatNumero(d.avancos) : '—'}</td>
+                <td>${formatNumero(d.cumEmailsSent)}</td>
+                <td>${formatNumero(d.cumEmailOpens)}</td>
+                <td>${formatNumero(d.cumEmailReplies)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+function voltarVisaoGeral() {
+  document.getElementById('selectCliente').value = '';
+  carregarVisaoGeral();
+}
+
+document.getElementById('selectCliente').addEventListener('change', carregar);
+
+const params = new URLSearchParams(window.location.search);
+const contaInicial = params.get('conta');
+carregarVisaoGeral().then(() => {
+  if (contaInicial) selecionarCliente(contaInicial);
+});
+</script>
+</body>
+</html>

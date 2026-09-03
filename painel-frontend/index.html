@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Painel de Campanhas</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2e38;
+    --text: #e6e8ec;
+    --muted: #8b92a3;
+    --accent: #4f8cff;
+    --ok: #3ecf6d;
+    --err: #ff5d5d;
+    --warn: #f5b942;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 12px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  input {
+    width: 100%;
+    background: #0d0f13;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  button {
+    width: 100%;
+    margin-top: 10px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button.secondary { background: #2a2e38; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .dot.running { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .dot.ok { background: var(--ok); }
+  .dot.err { background: var(--err); }
+  #log {
+    background: #0a0c10;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    height: 480px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .actions .divider { border-top: 1px solid var(--border); margin: 14px 0; }
+  small.hint { display: block; color: var(--muted); margin-top: 6px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<h1>Painel de Relatório — Controle de Campanhas</h1>
+<div class="sub">Disparo manual das rotinas de extração. Use se o agendamento automático falhar.</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Conexão</h2>
+    <label>URL da API (VPS)</label>
+    <input id="apiUrl" placeholder="https://sua-api.exemplo.com" />
+    <label>Token</label>
+    <input id="apiToken" type="password" placeholder="X-API-Token" />
+    <button class="secondary" onclick="salvarConexao()">Salvar</button>
+    <div class="divider"></div>
+
+    <h2>Status</h2>
+    <div class="status-row"><span class="dot" id="statusDot"></span><span id="statusText">desconectado</span></div>
+    <div id="statusDetail" style="font-size:12px; color:var(--muted);"></div>
+
+    <div class="divider"></div>
+    <h2 class="actions">Ações</h2>
+    <button onclick="run('/api/run/dia-anterior')">Extrair dia anterior</button>
+    <button onclick="run('/api/run/campanhas')">Extrair campanhas</button>
+    <button onclick="run('/api/run/planilhas')">Atualizar planilhas de controle</button>
+
+    <div class="divider"></div>
+    <label>Data inicial</label>
+    <input id="dataIni" type="date" />
+    <label>Data final (opcional)</label>
+    <input id="dataFim" type="date" />
+    <button onclick="runCustom()">Extrair intervalo customizado</button>
+    <small class="hint">Se "data final" ficar vazio, processa só a data inicial.</small>
+  </div>
+
+  <div class="card">
+    <h2>Log</h2>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script>
+let logCount = 0;
+let poller = null;
+
+function getConn() {
+  return {
+    url: (localStorage.getItem('painel_api_url') || '').replace(/\/$/, ''),
+    token: localStorage.getItem('painel_api_token') || '',
+  };
+}
+
+function salvarConexao() {
+  localStorage.setItem('painel_api_url', document.getElementById('apiUrl').value.trim());
+  localStorage.setItem('painel_api_token', document.getElementById('apiToken').value.trim());
+  logCount = 0;
+  document.getElementById('log').textContent = '';
+  tick();
+}
+
+function loadConn() {
+  const c = getConn();
+  document.getElementById('apiUrl').value = c.url;
+  document.getElementById('apiToken').value = c.token;
+}
+
+async function api(path, opts = {}) {
+  const c = getConn();
+  if (!c.url) throw new Error('configure a URL da API');
+  const res = await fetch(c.url + path, {
+    ...opts,
+    headers: { ...(opts.headers || {}), 'X-API-Token': c.token },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+}
+
+async function run(path) {
+  try {
+    await api(path, { method: 'POST' });
+  } catch (e) {
+    alert('Erro ao disparar: ' + e.message);
+  }
+}
+
+async function runCustom() {
+  const inicio = document.getElementById('dataIni').value;
+  const fim = document.getElementById('dataFim').value;
+  if (!inicio) { alert('informe a data inicial'); return; }
+  try {
+    await api('/api/run/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inicio, fim: fim || inicio }),
+    });
+  } catch (e) {
+    alert('Erro ao disparar: ' + e.message);
+  }
+}
+
+function setStatus(cls, text) {
+  const dot = document.getElementById('statusDot');
+  dot.className = 'dot' + (cls ? ' ' + cls : '');
+  document.getElementById('statusText').textContent = text;
+}
+
+async function tick() {
+  const c = getConn();
+  if (!c.url) { setStatus('', 'configure a conexão'); return; }
+  try {
+    const st = await api('/api/status');
+    if (st.running) {
+      setStatus('running', 'executando: ' + st.action);
+    } else if (st.success === true) {
+      setStatus('ok', 'ocioso — última execução OK (' + st.action + ')');
+    } else if (st.success === false) {
+      setStatus('err', 'ocioso — última execução falhou: ' + (st.error || ''));
+    } else {
+      setStatus('', 'ocioso');
+    }
+    document.getElementById('statusDetail').textContent =
+      st.started_at ? ('início: ' + st.started_at + (st.finished_at ? ' · fim: ' + st.finished_at : '')) : '';
+
+    const lg = await api('/api/logs?since=' + logCount);
+    if (lg.lines && lg.lines.length) {
+      const el = document.getElementById('log');
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
+      el.textContent += (logCount > 0 ? '\n' : '') + lg.lines.join('\n');
+      logCount = lg.total;
+      if (atBottom) el.scrollTop = el.scrollHeight;
+    }
+  } catch (e) {
+    setStatus('err', 'erro de conexão: ' + e.message);
+  }
+}
+
+loadConn();
+tick();
+poller = setInterval(tick, 2000);
+</script>
+
+</body>
+</html>
