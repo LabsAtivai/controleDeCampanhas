@@ -3,5 +3,10 @@ services:
     build: .
     container_name: apscheduler_app
     restart: always   # garante que sempre reinicie
-    env_file:
-      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      CREDENTIALS_API_URL: ${CREDENTIALS_API_URL}
+      CREDENTIALS_API_KEY: ${CREDENTIALS_API_KEY}
+    volumes:
+      # credencial do pygsheets (secret, fora do git) - copia uma vez no host
+      - /root/secrets/sheets.googleapis.com-python.json:/app/sheets.googleapis.com-python.json:ro
