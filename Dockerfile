@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends tzdata \
         "pandas>=2.3.1" \
         "pygsheets>=2.0.6" \
         "pymysql>=1.1.1" \
+        "pytz>=2025.2" \
         "sqlalchemy>=2.0.43" \
     && rm -rf /var/lib/apt/lists/*
 
