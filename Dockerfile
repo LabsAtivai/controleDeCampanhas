@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends tzdata \
 # Definir timezone
 ENV TZ=America/Sao_Paulo
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONIOENCODING=utf-8
 
 # Criar diretório da aplicação
 WORKDIR /app

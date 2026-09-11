@@ -93,7 +93,11 @@ def extrai_dia_anterior():
     print("Iniciando processo para extração do Status do Dia Anterior")
     df = api.senhas()
     contas = api.contas_ativas()
-    
+    contas = contas.merge(
+        df[['Email Snovio', 'Client id', 'Client Secret']],
+        left_on='conta', right_on='Email Snovio', how='inner'
+    )
+
     def processa_conta(row):
         try:
             token_acesso = api.gera_token(row['Client id'], row['Client Secret'])
@@ -181,6 +185,10 @@ def extrai_dia_anterior_custom(data='2026-03-24'):
 
     df = api.senhas()
     contas = api.contas_ativas()
+    contas = contas.merge(
+        df[['Email Snovio', 'Client id', 'Client Secret']],
+        left_on='conta', right_on='Email Snovio', how='inner'
+    )
 
     def processa_conta(row):
         try:
