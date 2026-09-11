@@ -19,7 +19,7 @@ def tarefa_cron():
 if __name__ == "__main__":
     scheduler = BlockingScheduler(timezone=tz)
 
-    scheduler.add_job(tarefa_cron, CronTrigger(hour=6, minute=0))
+    scheduler.add_job(tarefa_cron, CronTrigger(hour=1, minute=0))
     
     print("Scheduler iniciado. Pressione CTRL+C para sair.")
     try:

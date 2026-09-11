@@ -9,5 +9,13 @@ wheels/
 
 # Virtual environments
 .venv
+venv/
+venv2/
 mysql_data/
 mysql/
+
+# Secrets / outros serviços do monorepo (não fazem parte do container scheduler)
+.env
+.git/
+painel-api/
+painel-frontend/
