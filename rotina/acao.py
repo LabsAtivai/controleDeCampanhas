@@ -87,7 +87,36 @@ def extrai_campanhas(ids_selecionados=None):
     total_campanhas = crud.sincroniza_campanhas(clientes_com_campanhas)
     print(f"✅ {total_campanhas} campanha(s) sincronizada(s) no banco de dados")
 
+    atualiza_aba_campanhas_master(clientes_com_campanhas)
+
     print("Etapa de Extração de Campanhas Finalizada")
+
+
+def atualiza_aba_campanhas_master(clientes_com_campanhas):
+    """Reescreve a aba "campanhas" do Sheet mestre. As planilhas de squad puxam
+    essa aba via IMPORTRANGE (aba "base") e usam a coluna I (conta) como opções
+    do dropdown "Escolha a Campanha da Planilha" — sem isso, cliente novo não
+    aparece pra ser escolhido. Client id/Secret não são mais gravados aqui."""
+    colunas = ['id', 'campaign', 'list_id', 'status', 'created_at', 'updated_at', 'started_at', 'hash', 'conta']
+
+    frames = []
+    for cliente, campanha_df in clientes_com_campanhas:
+        if campanha_df.empty:
+            continue
+        campanha_df = campanha_df.copy()
+        campanha_df['conta'] = str(cliente['email_snovio']).strip().lower()
+        frames.append(campanha_df.reindex(columns=colunas))
+
+    if not frames:
+        print("⚠️ Nenhuma campanha retornada, aba 'campanhas' do Sheet mestre não foi alterada")
+        return
+
+    df = pd.concat(frames, ignore_index=True).fillna('')
+    gc = pygsheets.authorize()
+    aba = gc.open_by_key('1NJzsYoLFu2zHNYS6lsltWou2qn2DFMBv4sqAI0Mer4k').worksheet_by_title("campanhas")
+    aba.clear()
+    aba.set_dataframe(df, start='A1', fit=True)
+    print(f"✅ Aba 'campanhas' do Sheet mestre atualizada ({len(df)} linhas)")
         
 def extrai_dia_anterior():
     print("Iniciando processo para extração do Status do Dia Anterior")
@@ -305,6 +334,9 @@ def atualiza_planilhas_controle():
             df_final = pd.concat(dados, ignore_index=True)
             df_final = df_final.fillna(0)
             df_final = df_final.drop_duplicates(subset=['id'])
+            # Registros antigos vinham com a conta capitalizada (ex: BioCarnes@ativa.ai),
+            # os novos vêm minúsculos — o QUERY do Dashboard separa os dois
+            df_final['conta'] = df_final['conta'].astype(str).str.strip().str.lower()
         else:
             df_final = pd.DataFrame()
 
