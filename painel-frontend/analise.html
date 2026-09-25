@@ -93,6 +93,7 @@
     <input type="date" id="dataInicio" class="search-input" style="display:none"/>
     <input type="date" id="dataFim" class="search-input" style="display:none"/>
     <button class="btn-action" id="btnAplicarData" style="display:none" onclick="carregar()">Aplicar</button>
+    <input class="search-input" id="filtroConta" placeholder="🔍  Buscar cliente..." oninput="if (!document.getElementById('selectCliente').value) renderVisaoGeral()" style="flex:1;min-width:180px"/>
     <select id="selectCliente" class="search-input" style="flex:1;min-width:220px">
       <option value="">Todas as contas</option>
     </select>
@@ -203,6 +204,14 @@ function popularSelectClientes() {
   select.value = valorAtual;
 }
 
+function statusBadge(status) {
+  const cores = { verde: 'var(--green)', amarelo: 'var(--amber)', vermelho: 'var(--red)' };
+  const labels = { verde: 'Em dia', amarelo: 'Atenção', vermelho: 'Sem avanço' };
+  const cor = cores[status] || 'var(--text3)';
+  const label = labels[status] || '—';
+  return `<span style="display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif"><span style="width:8px;height:8px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0"></span>${label}</span>`;
+}
+
 function renderVisaoGeral() {
   const el = document.getElementById('conteudo');
   if (!contasResumo[squadAtual]) squadAtual = Object.keys(contasResumo)[0];
@@ -217,7 +226,9 @@ function renderVisaoGeral() {
   }
 
   const nomesSquad = Object.keys(contasResumo);
-  const linhasOrdenadas = linhas.slice().sort((a, b) => b.emailsSent - a.emailsSent);
+  const textoFiltro = (document.getElementById('filtroConta')?.value || '').trim().toLowerCase();
+  const linhasFiltradas = textoFiltro ? linhas.filter(l => (l.conta || '').toLowerCase().includes(textoFiltro)) : linhas;
+  const linhasOrdenadas = linhasFiltradas.slice().sort((a, b) => b.emailsSent - a.emailsSent);
 
   const tabelaResumo = `
     <table class="grid-table">
@@ -226,6 +237,7 @@ function renderVisaoGeral() {
           <th>Cliente</th>
           <th>Enviados</th>
           <th>Avanços</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody>
@@ -234,8 +246,9 @@ function renderVisaoGeral() {
             <td class="cell-conta">${escapeHtml(l.conta)}</td>
             <td>${formatNumero(l.emailsSent)}</td>
             <td>${l.avancos ? formatNumero(l.avancos) : '—'}</td>
+            <td>${statusBadge(l.statusAvanco)}</td>
           </tr>
-        `).join('') : `<tr><td colspan="3"><div class="empty-state">Nenhuma conta com dados nesse período</div></td></tr>`}
+        `).join('') : `<tr><td colspan="4"><div class="empty-state">Nenhuma conta encontrada</div></td></tr>`}
       </tbody>
     </table>
   `;
@@ -250,15 +263,14 @@ function renderVisaoGeral() {
           <th>Enviados</th>
           <th>Entregues</th>
           <th>Aberturas</th>
-          <th>Taxa abertura</th>
           <th>Respostas</th>
-          <th>Taxa resposta</th>
           <th>Avanços</th>
           <th>Última coleta</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody>
-        ${linhas.length ? linhas.slice().sort((a, b) => b.totalContacted - a.totalContacted).map(l => `
+        ${linhasFiltradas.length ? linhasFiltradas.slice().sort((a, b) => b.totalContacted - a.totalContacted).map(l => `
           <tr onclick="selecionarCliente('${l.conta.replace(/'/g, "\\'")}')">
             <td class="cell-conta">${escapeHtml(l.conta)}</td>
             <td>${formatNumero(l.diasDisparos)}</td>
@@ -266,13 +278,12 @@ function renderVisaoGeral() {
             <td>${formatNumero(l.emailsSent)}</td>
             <td>${formatNumero(l.delivered)}</td>
             <td>${formatNumero(l.emailOpens)}</td>
-            <td>${l.taxaAbertura === null ? '—' : l.taxaAbertura.toLocaleString('pt-BR') + '%'}</td>
             <td>${formatNumero(l.emailReplies)}</td>
-            <td>${l.taxaResposta === null ? '—' : l.taxaResposta.toLocaleString('pt-BR') + '%'}</td>
             <td>${l.avancos ? formatNumero(l.avancos) : '—'}</td>
             <td>${escapeHtml(l.ultimaColeta || '—')}</td>
+            <td>${statusBadge(l.statusAvanco)}</td>
           </tr>
-        `).join('') : `<tr><td colspan="11"><div class="empty-state">Nenhuma conta com dados nesse período</div></td></tr>`}
+        `).join('') : `<tr><td colspan="10"><div class="empty-state">Nenhuma conta encontrada</div></td></tr>`}
       </tbody>
     </table>
   `;
@@ -374,8 +385,9 @@ function renderCliente(conta, dias) {
   const ultimo = dias[dias.length - 1];
   const totalAvancos = dias.reduce((s, d) => s + (d.avancos || 0), 0);
   const diasDisparo = dias.filter(d => d.emailsSent > 0).length;
-  const taxaAbertura = ultimo.cumEmailsSent ? (ultimo.cumEmailOpens / ultimo.cumEmailsSent * 100) : null;
-  const taxaResposta = ultimo.cumEmailsSent ? (ultimo.cumEmailReplies / ultimo.cumEmailsSent * 100) : null;
+  const janelaRecente = new Set([hoje(), diasAtras(1), diasAtras(2)]);
+  const avancosRecentes = dias.filter(d => janelaRecente.has(d.data)).reduce((s, d) => s + (d.avancos || 0), 0);
+  const status = avancosRecentes >= 2 ? 'verde' : avancosRecentes === 1 ? 'amarelo' : 'vermelho';
 
   const largura = 1000, altura = 220;
   const maxCumulativo = Math.max(...dias.map(d => d.cumEmailsSent), 1);
@@ -383,7 +395,7 @@ function renderCliente(conta, dias) {
 
   el.innerHTML = `
     ${voltar}
-    <div class="kpi-row" style="margin:12px 0 18px;grid-template-columns:repeat(6,1fr)">
+    <div class="kpi-row" style="margin:12px 0 18px;grid-template-columns:repeat(5,1fr)">
       <div class="kpi-card">
         <div class="kpi-label">Dias de disparo</div>
         <div class="kpi-value">${formatNumero(diasDisparo)}</div>
@@ -393,20 +405,16 @@ function renderCliente(conta, dias) {
         <div class="kpi-value">${formatNumero(ultimo.cumEmailsSent)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Taxa de abertura</div>
-        <div class="kpi-value">${taxaAbertura === null ? '—' : taxaAbertura.toLocaleString('pt-BR', {maximumFractionDigits: 2}) + '%'}</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Taxa de resposta</div>
-        <div class="kpi-value">${taxaResposta === null ? '—' : taxaResposta.toLocaleString('pt-BR', {maximumFractionDigits: 2}) + '%'}</div>
-      </div>
-      <div class="kpi-card">
         <div class="kpi-label">Respostas (acumulado)</div>
         <div class="kpi-value">${formatNumero(ultimo.cumEmailReplies)}</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Avanços (período)</div>
         <div class="kpi-value">${formatNumero(totalAvancos)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Status (3 dias)</div>
+        <div class="kpi-value" style="font-size:16px;padding-top:5px">${statusBadge(status)}</div>
       </div>
     </div>
 
