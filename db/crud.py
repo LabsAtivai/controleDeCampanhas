@@ -31,7 +31,7 @@ def atualiza_registros(df):
                 existente.emails_sent = row.get("emails_sent")
                 existente.delivered = row.get("delivered")
                 existente.email_opens = row.get("email_opens")
-                existente.links_clicks = row.get("links_clicks")
+                existente.links_clicks = row.get("link_clicks")
                 existente.email_replies = row.get("email_replies")
             else:
                 # Insere novo registro
@@ -44,7 +44,7 @@ def atualiza_registros(df):
                     emails_sent=row.get("emails_sent"),
                     delivered=row.get("delivered"),
                     email_opens=row.get("email_opens"),
-                    links_clicks=row.get("links_clicks"),
+                    links_clicks=row.get("link_clicks"),
                     email_replies=row.get("email_replies"),
                 )
                 session.add(novo)
