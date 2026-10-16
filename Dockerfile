@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends tzdata \
         "sqlalchemy>=2.0.43" \
     && rm -rf /var/lib/apt/lists/*
 
-# Definir timezone
+# Definir timezone, e tambem a parte de dominio do front, pois ainda nao 
 ENV TZ=America/Sao_Paulo
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONIOENCODING=utf-8

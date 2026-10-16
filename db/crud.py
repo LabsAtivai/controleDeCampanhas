@@ -6,12 +6,12 @@ from db.session import create_tables
 import pandas as pd
 from sqlalchemy.orm import Session
 from db.models import Dados, ContaSnovio, Campanha, Avanco
-from db.session import engine
+from db.session import get_engine
 
 # Lê o CSV
 def atualiza_registros(df):
     # Abre sessão
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         total = len(df)
         for i, (_, row) in enumerate(df.iterrows(), start=1):
             # Progresso sequencial
@@ -31,7 +31,7 @@ def atualiza_registros(df):
                 existente.emails_sent = row.get("emails_sent")
                 existente.delivered = row.get("delivered")
                 existente.email_opens = row.get("email_opens")
-                existente.links_clicks = row.get("links_clicks")
+                existente.links_clicks = row.get("link_clicks")
                 existente.email_replies = row.get("email_replies")
             else:
                 # Insere novo registro
@@ -44,7 +44,7 @@ def atualiza_registros(df):
                     emails_sent=row.get("emails_sent"),
                     delivered=row.get("delivered"),
                     email_opens=row.get("email_opens"),
-                    links_clicks=row.get("links_clicks"),
+                    links_clicks=row.get("link_clicks"),
                     email_replies=row.get("email_replies"),
                 )
                 session.add(novo)
@@ -110,7 +110,7 @@ def sincroniza_campanhas(clientes_com_campanhas: list) -> int:
     cliente_dict precisa ter as chaves id/email/email_snovio (sem segredo).
     Retorna o total de linhas de campanha gravadas."""
     total_campanhas = 0
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         for cliente, campanhas_df in clientes_com_campanhas:
             upsert_conta_snovio(session, cliente)
             upsert_campanhas(session, cliente["id"], campanhas_df)
@@ -123,7 +123,7 @@ def get_campanhas_ativas() -> pd.DataFrame:
     """Substitui api.contas_ativas() — lê de campanhas/contas_snovio (MySQL) em vez
     da aba "campanhas" do Sheet de controle. Mesmas colunas que o resto do código já
     espera: id (campanha), campaign (nome), conta (e-mail Snovio), status."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         registros = (
             session.query(Campanha, ContaSnovio)
             .join(ContaSnovio, Campanha.conta_id == ContaSnovio.id)
@@ -148,7 +148,7 @@ def get_campanhas_ativas() -> pd.DataFrame:
 def cria_avanco(data: str, conta: str, quantidade: int) -> dict:
     """Registra a quantidade de avanços do dia pra um cliente (substitui digitar
     na aba "Avanços" do Sheet)."""
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         registro = Avanco(data=data, conta=conta, quantidade=quantidade, criado_em=datetime.utcnow())
         session.add(registro)
         session.commit()
@@ -156,7 +156,7 @@ def cria_avanco(data: str, conta: str, quantidade: int) -> dict:
 
 
 def lista_avancos(conta: str = None) -> list:
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         query = session.query(Avanco)
         if conta:
             query = query.filter(Avanco.conta == conta)
@@ -168,7 +168,7 @@ def lista_avancos(conta: str = None) -> list:
 
 
 def remove_avanco(avanco_id: int) -> bool:
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         registro = session.get(Avanco, avanco_id)
         if not registro:
             return False
@@ -184,7 +184,7 @@ def get_analise_cliente(conta: str, inicio: str = None, fim: str = None) -> list
     inicio/fim em 'YYYY-MM-DD' (inclusive) — se omitidos, traz o histórico inteiro."""
     from sqlalchemy import func
 
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         query_dados = session.query(
             Dados.data,
             func.sum(Dados.total_contacted),
@@ -241,7 +241,7 @@ def get_dados_by_id_conta(conta: str) -> pd.DataFrame:
     Retorna um DataFrame com todos os registros da tabela 'dados'
     filtrados por um id_conta específico.
     """
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         # Consulta todos os registros com id_conta especificado
         registros = session.query(Dados).filter(Dados.conta == conta).all()
 

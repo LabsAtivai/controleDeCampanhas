@@ -126,22 +126,17 @@
   </div>
 </div>
 
+<script src="api.js"></script>
 <script>
 let logCount = 0;
 let poller = null;
-
-function getConn() {
-  return {
-    url: (localStorage.getItem('painel_api_url') || '').replace(/\/$/, ''),
-    token: localStorage.getItem('painel_api_token') || '',
-  };
-}
 
 function salvarConexao() {
   localStorage.setItem('painel_api_url', document.getElementById('apiUrl').value.trim());
   localStorage.setItem('painel_api_token', document.getElementById('apiToken').value.trim());
   logCount = 0;
   document.getElementById('log').textContent = '';
+  document.getElementById('statusDetail').textContent = '';
   tick();
 }
 
@@ -149,18 +144,6 @@ function loadConn() {
   const c = getConn();
   document.getElementById('apiUrl').value = c.url;
   document.getElementById('apiToken').value = c.token;
-}
-
-async function api(path, opts = {}) {
-  const c = getConn();
-  if (!c.url) throw new Error('configure a URL da API');
-  const res = await fetch(c.url + path, {
-    ...opts,
-    headers: { ...(opts.headers || {}), 'X-API-Token': c.token },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
-  return data;
 }
 
 async function run(path) {
@@ -222,7 +205,16 @@ async function tick() {
   }
 }
 
+function avisoDeToken() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('erro') !== 'token') return;
+  document.getElementById('statusDetail').textContent =
+    'Sua sessão foi recusada pela API (token inválido). Confira a conexão e salve de novo.';
+  history.replaceState(null, '', location.pathname);
+}
+
 loadConn();
+avisoDeToken();
 tick();
 poller = setInterval(tick, 2000);
 </script>

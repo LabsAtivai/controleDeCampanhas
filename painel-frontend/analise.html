@@ -104,33 +104,13 @@
   </div>
 </main>
 
+<script src="api.js"></script>
 <script>
 let periodoAtual = '30dias';
 let squadAtual = 'Onboarding';
 let visaoAtual = 'resumo'; // 'resumo' (cliente|enviados|avanços) ou 'detalhado'
 let contasResumo = null; // último /api/analise-contas carregado (pro select + visão por squad)
 
-function getConn() {
-  return {
-    url: (localStorage.getItem('painel_api_url') || '').replace(/\/$/, ''),
-    token: localStorage.getItem('painel_api_token') || '',
-  };
-}
-async function api(path) {
-  const c = getConn();
-  if (!c.url) throw new Error('configure a conexão na tela Dashboard primeiro');
-  const res = await fetch(c.url + path, { headers: { 'X-API-Token': c.token } });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
-  return data;
-}
-function escapeHtml(str) {
-  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function formatNumero(n) {
-  if (n === null || n === undefined) return '—';
-  return Number(n).toLocaleString('pt-BR');
-}
 function hoje() {
   return new Date().toISOString().slice(0, 10);
 }

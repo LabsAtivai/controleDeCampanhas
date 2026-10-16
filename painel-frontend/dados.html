@@ -206,6 +206,7 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
+<script src="api.js"></script>
 <script>
 let squadsData = null;
 let squadAtual = 'Onboarding';
@@ -213,12 +214,6 @@ let clientes = [];
 let selecionados = new Set();
 let avancosData = [];
 
-function getConn() {
-  return {
-    url: (localStorage.getItem('painel_api_url') || '').replace(/\/$/, ''),
-    token: localStorage.getItem('painel_api_token') || '',
-  };
-}
 function loadConn() {
   const c = getConn();
   document.getElementById('connUrl').value = c.url;
@@ -230,13 +225,6 @@ function salvarConexao() {
   carregarDados();
 }
 
-function escapeHtml(str) {
-  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function formatNumero(n) {
-  if (n === null || n === undefined) return '—';
-  return Number(n).toLocaleString('pt-BR');
-}
 function showToast(msg, type = 'info') {
   const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
@@ -244,15 +232,6 @@ function showToast(msg, type = 'info') {
   toast.textContent = msg;
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 3500);
-}
-
-async function api(path, opts = {}) {
-  const c = getConn();
-  if (!c.url) throw new Error('configure a URL da API');
-  const res = await fetch(c.url + path, { ...opts, headers: { ...(opts.headers || {}), 'X-API-Token': c.token } });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
-  return data;
 }
 
 async function carregarDados() {

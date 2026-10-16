@@ -27,6 +27,29 @@ Todos (exceto `/api/health`) exigem header `X-API-Token: <PAINEL_TOKEN>`.
 
 Só um job roda por vez (lock); disparo concorrente retorna 409.
 
+## Testes
+
+Na raiz do repo:
+
+```bash
+python -m venv .venv && .venv/Scripts/pip install -r requirements.txt pytest
+.venv/Scripts/python -m pytest
+```
+
+Os testes nunca leem o `.env`: `DATABASE_URL` é forçada para um SQLite temporário e Snov.io, Sheets e o sistema de credenciais são mockados. As queries cross-DB de `/api/squads` e `/api/analise-contas` (`tests/test_dashboard_mysql.py`) só rodam com um **MySQL descartável**:
+
+```bash
+TEST_DATABASE_URL=mysql+pymysql://root:password@localhost:3306/ .venv/Scripts/python -m pytest -m mysql
+```
+
+Se `dadoscampanha.dados` já tiver dados reais, a suíte aborta em vez de mexer neles.
+
+Smoke **só-leitura** contra o MySQL real (`tests/test_dashboard_readonly.py`): só faz GET, abre a sessão com `SET SESSION TRANSACTION READ ONLY` e aborta se ela não ficar read-only. Confere o formato do JSON e a sanidade dos números, não os valores:
+
+```bash
+TEST_READONLY_DATABASE_URL=<mesma URL de LISTAS_SQUAD_DATABASE_URL> .venv/Scripts/python -m pytest -m readonly_db -v
+```
+
 ## Dependências
 
 O build usa `context: ..` (raiz do repo) porque `server.py` importa `rotina/` e `db/`, e precisa do arquivo de credenciais `sheets.googleapis.com-python.json` já presente na raiz.

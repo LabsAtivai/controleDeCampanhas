@@ -12,8 +12,6 @@ from db.session import create_tables
 from db import dashboard, crud
 from rotina import acao, credentials_api
 
-create_tables()
-
 app = Flask(__name__)
 
 API_TOKEN = os.environ.get("PAINEL_TOKEN", "")
@@ -48,8 +46,15 @@ class TeeStream:
         self.original.flush()
 
 
-sys.stdout = TeeStream(sys.stdout)
-sys.stderr = TeeStream(sys.stderr)
+def create_app():
+    """Setup com efeito colateral (cria tabelas, captura stdout pro /api/logs).
+    Fica fora do import pra que os testes importem `app` sem banco.
+    Usado no __main__ e no gunicorn (`server:create_app()`)."""
+    if not isinstance(sys.stdout, TeeStream):
+        sys.stdout = TeeStream(sys.stdout)
+        sys.stderr = TeeStream(sys.stderr)
+    create_tables()
+    return app
 
 
 def require_token(fn):
@@ -285,4 +290,4 @@ def run_planilhas():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    app.run(host="0.0.0.0", port=port)
+    create_app().run(host="0.0.0.0", port=port)

@@ -14,7 +14,7 @@ from datetime import datetime, date
 import openpyxl
 from sqlalchemy import text
 
-from db.session import engine, create_tables
+from db.session import get_engine, create_tables
 
 
 def _normaliza(texto: str) -> str:
@@ -109,7 +109,7 @@ def importa_arquivo(caminho: str) -> tuple[int, int]:
         VALUES (:data, :conta, :quantidade, :criado_em)
         ON DUPLICATE KEY UPDATE quantidade = VALUES(quantidade)
     """)
-    with engine.begin() as conn:
+    with get_engine().begin() as conn:
         resultado = conn.execute(sql, payload)
 
     # MySQL: rowcount conta 1 por INSERT novo e 2 por UPDATE (linha existente alterada)

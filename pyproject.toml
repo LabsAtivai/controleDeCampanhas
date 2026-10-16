@@ -1,15 +1,29 @@
 [project]
 name = "ativa-controle-de-campanhas"
 version = "0.1.0"
-description = "Add your description here"
+description = "Extração diária de métricas Snov.io, painel-api e painel-frontend de controle de campanhas"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "apscheduler>=3.11.0",
     "cryptography>=45.0.7",
+    "flask>=3.0.0",
     "httpx>=0.28.1",
     "pandas>=2.3.1",
     "pygsheets>=2.0.6",
     "pymysql>=1.1.1",
+    "pytz>=2025.2",
     "sqlalchemy>=2.0.43",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "mysql: teste de integração que precisa de um MySQL de teste (TEST_DATABASE_URL)",
+    "readonly_db: smoke só-leitura contra o MySQL real (TEST_READONLY_DATABASE_URL)",
 ]
