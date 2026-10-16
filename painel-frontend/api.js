@@ -1,12 +1,29 @@
-// Funções compartilhadas pelas páginas do painel (index, dados, analise).
-// Script clássico, sem módulo: tudo aqui fica global.
 
+
+// A conexão fica no sessionStorage: o token some quando a aba fecha.
 function getConn() {
   return {
-    url: (localStorage.getItem('painel_api_url') || '').replace(/\/$/, ''),
-    token: localStorage.getItem('painel_api_token') || '',
+    url: (sessionStorage.getItem('painel_api_url') || '').replace(/\/$/, ''),
+    token: sessionStorage.getItem('painel_api_token') || '',
   };
 }
+
+function setConn(url, token) {
+  sessionStorage.setItem('painel_api_url', url);
+  sessionStorage.setItem('painel_api_token', token);
+}
+
+// Versões antigas guardavam a conexão no localStorage. Copia para a sessão
+// (se ela ainda não tiver) e apaga do localStorage.
+function migrarConexaoAntiga() {
+  for (const chave of ['painel_api_url', 'painel_api_token']) {
+    const antigo = localStorage.getItem(chave);
+    if (antigo === null) continue;
+    if (sessionStorage.getItem(chave) === null) sessionStorage.setItem(chave, antigo);
+    localStorage.removeItem(chave);
+  }
+}
+migrarConexaoAntiga();
 
 function estaNoIndex() {
   return /(^|\/)(index\.html)?$/.test(location.pathname);

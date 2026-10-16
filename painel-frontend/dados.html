@@ -220,8 +220,7 @@ function loadConn() {
   document.getElementById('connToken').value = c.token;
 }
 function salvarConexao() {
-  localStorage.setItem('painel_api_url', document.getElementById('connUrl').value.trim());
-  localStorage.setItem('painel_api_token', document.getElementById('connToken').value.trim());
+  setConn(document.getElementById('connUrl').value.trim(), document.getElementById('connToken').value.trim());
   carregarDados();
 }
 
@@ -332,7 +331,7 @@ function renderClientes() {
   const filtrados = clientes.filter(c => !texto || (c.email || '').toLowerCase().includes(texto) || (c.emailSnovio || '').toLowerCase().includes(texto));
   document.getElementById('listaClientes').innerHTML = filtrados.map(c => `
     <label class="client-row">
-      <input type="checkbox" data-id="${c.id}" ${selecionados.has(c.id) ? 'checked' : ''} onchange="toggleCliente('${c.id}', this.checked)"/>
+      <input type="checkbox" data-id="${escapeHtml(c.id)}" ${selecionados.has(c.id) ? 'checked' : ''} onchange="toggleCliente(this.dataset.id, this.checked)"/>
       <span>${escapeHtml(c.email)} <span class="cell-conta">${escapeHtml(c.emailSnovio || '')}</span></span>
     </label>
   `).join('') || '<div class="empty-state">Nenhum cliente encontrado</div>';
@@ -379,7 +378,7 @@ async function carregarAvancos() {
           — ${escapeHtml(a.conta)}
           <span class="cell-conta">${escapeHtml(a.quantidade)} avanço(s)</span>
         </span>
-        <button class="btn-action" onclick="excluirAvanco(${a.id})">Excluir</button>
+        <button class="btn-action" onclick="excluirAvanco(${Number(a.id)})">Excluir</button>
       </label>
     `).join('') || '<div class="empty-state">Nenhum avanço registrado ainda</div>';
   } catch (e) {

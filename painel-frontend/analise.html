@@ -222,7 +222,7 @@ function renderVisaoGeral() {
       </thead>
       <tbody>
         ${linhasOrdenadas.length ? linhasOrdenadas.map(l => `
-          <tr onclick="selecionarCliente('${l.conta.replace(/'/g, "\\'")}')">
+          <tr data-conta="${escapeHtml(l.conta)}" onclick="selecionarCliente(this.dataset.conta)">
             <td class="cell-conta">${escapeHtml(l.conta)}</td>
             <td>${formatNumero(l.emailsSent)}</td>
             <td>${l.avancos ? formatNumero(l.avancos) : '—'}</td>
@@ -251,7 +251,7 @@ function renderVisaoGeral() {
       </thead>
       <tbody>
         ${linhasFiltradas.length ? linhasFiltradas.slice().sort((a, b) => b.totalContacted - a.totalContacted).map(l => `
-          <tr onclick="selecionarCliente('${l.conta.replace(/'/g, "\\'")}')">
+          <tr data-conta="${escapeHtml(l.conta)}" onclick="selecionarCliente(this.dataset.conta)">
             <td class="cell-conta">${escapeHtml(l.conta)}</td>
             <td>${formatNumero(l.diasDisparos)}</td>
             <td>${formatNumero(l.totalContacted)}</td>
@@ -270,7 +270,7 @@ function renderVisaoGeral() {
 
   el.innerHTML = `
     <div class="squad-tabs" id="squadTabs" style="margin-bottom:4px">
-      ${nomesSquad.map(s => `<button class="squad-tab ${s === squadAtual ? 'active' : ''}" onclick="selecionarSquadAnalise('${s.replace(/'/g, "\\'")}')">${escapeHtml(s === 'SDR REMOTO' ? 'SDR Remoto' : s)} <span style="opacity:.6">(${contasResumo[s].length})</span></button>`).join('')}
+      ${nomesSquad.map(s => `<button class="squad-tab ${s === squadAtual ? 'active' : ''}" data-squad="${escapeHtml(s)}" onclick="selecionarSquadAnalise(this.dataset.squad)">${escapeHtml(s === 'SDR REMOTO' ? 'SDR Remoto' : s)} <span style="opacity:.6">(${contasResumo[s].length})</span></button>`).join('')}
     </div>
     <div class="kpi-row">
       <div class="kpi-card">
@@ -400,7 +400,7 @@ function renderCliente(conta, dias) {
 
     <div class="chart-card" style="margin-bottom:18px">
       <div class="chart-title">${escapeHtml(conta)} — evolução acumulada</div>
-      <div class="chart-subtitle">${dias[0].data} até ${ultimo.data}</div>
+      <div class="chart-subtitle">${escapeHtml(dias[0].data)} até ${escapeHtml(ultimo.data)}</div>
       <div class="legend">
         <span class="legend-item"><span class="legend-swatch" style="background:var(--blue)"></span>Enviado</span>
         <span class="legend-item"><span class="legend-swatch" style="background:var(--green)"></span>Aberto</span>

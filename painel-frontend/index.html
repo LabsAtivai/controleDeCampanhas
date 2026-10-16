@@ -132,8 +132,7 @@ let logCount = 0;
 let poller = null;
 
 function salvarConexao() {
-  localStorage.setItem('painel_api_url', document.getElementById('apiUrl').value.trim());
-  localStorage.setItem('painel_api_token', document.getElementById('apiToken').value.trim());
+  setConn(document.getElementById('apiUrl').value.trim(), document.getElementById('apiToken').value.trim());
   logCount = 0;
   document.getElementById('log').textContent = '';
   document.getElementById('statusDetail').textContent = '';
