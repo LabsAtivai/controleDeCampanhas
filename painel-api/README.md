@@ -13,6 +13,18 @@ docker compose up -d --build
 
 Exponha a porta 8000 atrás do seu reverse proxy HTTPS existente (ex: `api-relatorios.seudominio.com` → `localhost:8000`).
 
+No container a API roda com gunicorn, **sempre com 1 worker** (`-w 1 --threads 8`): o estado do job, o lock e o buffer de logs ficam na memória do processo. Fora do Docker, no Linux/WSL, a partir da raiz do repo:
+
+```bash
+PAINEL_TOKEN=... gunicorn -w 1 --threads 8 -b 0.0.0.0:8000 --pythonpath painel-api "server:create_app()"
+```
+
+O gunicorn não roda no Windows; lá use o servidor de desenvolvimento do Flask, a partir da raiz do repo (o `PYTHONPATH` é pra achar `db/` e `rotina/`):
+
+```powershell
+$env:PYTHONPATH = "."; $env:PAINEL_TOKEN = "..."; python painel-api/server.py
+```
+
 ## Endpoints
 
 Todos (exceto `/api/health`) exigem header `X-API-Token: <PAINEL_TOKEN>`.
