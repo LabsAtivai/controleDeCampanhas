@@ -45,7 +45,7 @@ def test_lock_impede_job_concorrente(client, auth, monkeypatch):
     assert status["success"] is True
 
 
-def test_job_com_erro_registra_falha(client, auth, monkeypatch):
+def test_job_com_erro_registra_falha(client, auth, monkeypatch, caplog):
     def explode():
         raise RuntimeError("snov fora do ar")
 
@@ -55,7 +55,10 @@ def test_job_com_erro_registra_falha(client, auth, monkeypatch):
 
     status = client.get("/api/status", headers=auth).get_json()
     assert status["success"] is False
-    assert "snov fora do ar" in status["error"]
+    # o status vai pro front: só a msg genérica; o detalhe fica no log
+    assert status["error"] == "falha na execução, veja o log"
+    assert "snov fora do ar" not in status["error"]
+    assert any("snov fora do ar" in r.exc_text for r in caplog.records if r.exc_text)
 
 
 def test_campanhas_selecionadas_repassa_ids(client, auth, monkeypatch):

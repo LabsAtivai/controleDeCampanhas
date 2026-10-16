@@ -1,18 +1,26 @@
+import logging
 import os
 import secrets
 import sys
 import threading
+import time
 from collections import deque
 from datetime import date, datetime, timedelta
 from functools import wraps
 
-from flask import Flask, jsonify, request
+from flask import Flask, g, jsonify, request
+from werkzeug.exceptions import HTTPException
 
 from db.session import create_tables
 from db import dashboard, crud
 from rotina import acao, credentials_api
 
 app = Flask(__name__)
+logger = logging.getLogger("painel")
+
+ERRO_INTERNO = "erro interno, veja os logs do servidor"
+# Rotas chamadas pelo polling do index a cada 2 s: log de acesso só em DEBUG
+ROTAS_POLLING = {"/api/status", "/api/logs"}
 
 API_TOKEN = os.environ.get("PAINEL_TOKEN", "")
 FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "*")
@@ -53,6 +61,13 @@ def create_app():
     if not isinstance(sys.stdout, TeeStream):
         sys.stdout = TeeStream(sys.stdout)
         sys.stderr = TeeStream(sys.stderr)
+    # Depois do TeeStream: o handler guarda o sys.stderr da hora em que é criado,
+    # e assim os logs também chegam no /api/logs.
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        stream=sys.stderr,
+    )
     create_tables()
     return app
 
@@ -68,6 +83,29 @@ def require_token(fn):
         return fn(*args, **kwargs)
 
     return wrapper
+
+
+@app.before_request
+def marca_inicio():
+    g.t0 = time.perf_counter()
+
+
+@app.after_request
+def log_acesso(resp):
+    # Só método e path: nunca headers nem query string, pra não vazar o token.
+    ms = (time.perf_counter() - g.get("t0", time.perf_counter())) * 1000
+    nivel = logging.DEBUG if request.path in ROTAS_POLLING else logging.INFO
+    logger.log(nivel, "%s %s %s %s %.0fms", request.method, request.path, resp.status_code, request.remote_addr, ms)
+    return resp
+
+
+@app.errorhandler(Exception)
+def erro_nao_tratado(e):
+    # 404/405 etc. seguem o comportamento padrão do Flask
+    if isinstance(e, HTTPException):
+        return e
+    logger.exception("erro em %s %s", request.method, request.path)
+    return jsonify({"error": ERRO_INTERNO}), 500
 
 
 @app.after_request
@@ -102,11 +140,12 @@ def run_job(action_name, func):
             func()
             with STATE_LOCK:
                 STATE["success"] = True
-        except Exception as e:
-            print(f"[ERRO] {action_name}: {e}")
+        except Exception:
+            # traceback vai pro stderr (TeeStream → /api/logs); o status só leva a msg genérica
+            logger.exception("[ERRO] %s", action_name)
             with STATE_LOCK:
                 STATE["success"] = False
-                STATE["error"] = str(e)
+                STATE["error"] = "falha na execução, veja o log"
         finally:
             print(f"########## FIM: {action_name} ##########")
             with STATE_LOCK:
@@ -169,10 +208,7 @@ def run_campanhas_selecionadas():
 @app.route("/api/clientes")
 @require_token
 def clientes():
-    try:
-        ativos = credentials_api.get_active_clients()
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    ativos = credentials_api.get_active_clients()
     # nunca expor client_secret/senha pro frontend
     safe = [{"id": c["id"], "email": c["email"], "emailSnovio": c["email_snovio"]} for c in ativos]
     return jsonify(safe)
@@ -181,10 +217,7 @@ def clientes():
 @app.route("/api/squads")
 @require_token
 def squads():
-    try:
-        return jsonify({"squads": dashboard.get_squads_summary(), "geradoEm": datetime.now().isoformat()})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"squads": dashboard.get_squads_summary(), "geradoEm": datetime.now().isoformat()})
 
 
 @app.route("/api/avancos", methods=["GET"])
@@ -230,10 +263,7 @@ def analise_cliente():
     fim = request.args.get("fim")
     if not conta:
         return jsonify({"error": "informe 'conta' (ex: abluo@ativa.ai)"}), 400
-    try:
-        return jsonify({"conta": conta, "dias": crud.get_analise_cliente(conta, inicio, fim)})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"conta": conta, "dias": crud.get_analise_cliente(conta, inicio, fim)})
 
 
 @app.route("/api/analise-contas")
@@ -241,10 +271,7 @@ def analise_cliente():
 def analise_contas():
     inicio = request.args.get("inicio")
     fim = request.args.get("fim")
-    try:
-        return jsonify({"squads": dashboard.get_contas_resumo(inicio, fim), "geradoEm": datetime.now().isoformat()})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"squads": dashboard.get_contas_resumo(inicio, fim), "geradoEm": datetime.now().isoformat()})
 
 
 @app.route("/api/run/dia-anterior", methods=["POST"])
