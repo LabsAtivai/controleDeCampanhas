@@ -10,6 +10,7 @@ só atualiza a quantidade.
 import sys
 import unicodedata
 from datetime import datetime, date
+from core.time import utcnow
 
 import openpyxl
 from sqlalchemy import text
@@ -89,7 +90,10 @@ def importa_arquivo(caminho: str) -> tuple[int, int]:
         if not data_fmt:
             continue
         try:
-            quantidade = int(float(avanco_raw))
+            value = float(avanco_raw)
+            if value < 0 or value != int(value):
+                continue
+            quantidade = int(value)
         except (TypeError, ValueError):
             continue
 
@@ -99,27 +103,27 @@ def importa_arquivo(caminho: str) -> tuple[int, int]:
         print(f"  {caminho}: nenhuma linha válida encontrada")
         return 0, 0
 
-    agora = datetime.utcnow()
+    agora = utcnow()
     payload = [
         {"data": data_fmt, "conta": conta, "quantidade": quantidade, "criado_em": agora}
         for data_fmt, conta, quantidade in linhas
     ]
-    sql = text("""
-        INSERT INTO avancos (data, conta, quantidade, criado_em)
-        VALUES (:data, :conta, :quantidade, :criado_em)
-        ON DUPLICATE KEY UPDATE quantidade = VALUES(quantidade)
-    """)
+    from db.upsert import upsert
+    from db.models import Avanco
     with engine.begin() as conn:
-        resultado = conn.execute(sql, payload)
+        for row in payload:
+            upsert(conn, Avanco.__table__, row, ['conta', 'data'])
 
     # MySQL: rowcount conta 1 por INSERT novo e 2 por UPDATE (linha existente alterada)
-    afetados = resultado.rowcount
+    afetados = len(payload)
     print(f"  {caminho}: {len(linhas)} linha(s) na planilha -> upsert de {len(payload)} registro(s) (rowcount={afetados})")
     return len(payload), 0
 
 
 def main(caminhos: list[str]):
-    create_tables()
+    from db.migrations import ready
+    if not ready():
+        raise RuntimeError('Execute python -m manage migrate antes da importação.')
     total_inseridos = total_atualizados = 0
     for caminho in caminhos:
         i, a = importa_arquivo(caminho)

@@ -17,5 +17,21 @@ mysql/
 # Secrets / outros serviços do monorepo (não fazem parte do container scheduler)
 .env
 .git/
-painel-api/
-painel-frontend/
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+sheets.googleapis.com-python.json
+**/*credentials*.json
+**/*.pem
+**/*.key
+.claude/
+.codex/
+.agents/
+.impeccable/
+planilha.csv
+backups/
+data/
+tests/
+.pytest_cache/
+frontend/node_modules/

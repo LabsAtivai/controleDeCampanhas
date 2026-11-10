@@ -1,0 +1,2 @@
+A implantação completa agora usa docker-compose.yml na raiz, incluindo API,
+executor, scheduler, migração e backup. Execute os comandos na raiz do repositório.

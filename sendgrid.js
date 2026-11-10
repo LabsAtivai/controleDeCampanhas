@@ -1,5 +1,6 @@
 // delete-blocks-from-date.js
-const SENDGRID_API_KEY = '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';
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+if (!SENDGRID_API_KEY) throw new Error('Configure SENDGRID_API_KEY no ambiente.');
 
 const START_DATE = new Date('2026-06-01T03:00:00Z'); // 29/05 00:00 BRT
 const END_DATE   = new Date('2026-06-02T03:00:00Z'); // 29/05 23:59 BRT

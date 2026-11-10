@@ -1,28 +1,35 @@
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.cron import CronTrigger
-from rotina import acao
-from db.session import create_tables
-import pytz
+"""Queues yesterday's closed-day collection once, with bounded catch-up after restarts."""
+import time
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from core.jobs import enqueue
+from db.models import Job
+from db.session import engine
 
-tz = pytz.timezone('America/Sao_Paulo')
+def tick(now=None):
+    now = now or datetime.now(ZoneInfo('America/Sao_Paulo'))
+    if now.hour < 1:
+        return []
+    target = now.date() - timedelta(days=1)
+    with Session(engine) as db:
+        last = db.scalar(select(Job.schedule_key).where(Job.schedule_key.like('daily:%')).order_by(Job.schedule_key.desc()).limit(1))
+    first = datetime.fromisoformat(last.split(':', 1)[1]).date() + timedelta(days=1) if last else target
+    first = max(first, target - timedelta(days=6))
+    ids = []
+    while first <= target:
+        ids.append(enqueue('diario', {'data': first.isoformat()}, schedule_key='daily:' + first.isoformat()))
+        first += timedelta(days=1)
+    return ids
 
-create_tables()
+def main():
+    from db.migrations import ready
+    if not ready():
+        raise RuntimeError('Execute python -m manage migrate primeiro.')
+    while True:
+        tick()
+        time.sleep(30)
 
-print("Sistema Iniciado")
-
-def tarefa_cron():
-    acao.extrai_campanhas()
-    acao.extrai_dia_anterior() 
-    acao.atualiza_planilhas_controle()
-
-
-if __name__ == "__main__":
-    scheduler = BlockingScheduler(timezone=tz)
-
-    scheduler.add_job(tarefa_cron, CronTrigger(hour=1, minute=0))
-    
-    print("Scheduler iniciado. Pressione CTRL+C para sair.")
-    try:
-        scheduler.start()
-    except (KeyboardInterrupt, SystemExit):
-        print("Encerrando scheduler...")
+if __name__ == '__main__':
+    main()

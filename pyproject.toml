@@ -1,15 +1,28 @@
 [project]
 name = "ativa-controle-de-campanhas"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "Coleta, operação e análise de campanhas para equipes"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12,<3.13"
 dependencies = [
-    "apscheduler>=3.11.0",
-    "cryptography>=45.0.7",
-    "httpx>=0.28.1",
-    "pandas>=2.3.1",
-    "pygsheets>=2.0.6",
-    "pymysql>=1.1.1",
-    "sqlalchemy>=2.0.43",
+  "cryptography>=50,<51",
+  "flask>=3.1.2,<4",
+  "httpx>=0.28.1,<1",
+  "openpyxl>=3.1.5,<4",
+  "pandas>=2.3.3,<3",
+  "pygsheets>=2.0.6,<3",
+  "pymysql>=1.1.2,<2",
+  "python-dotenv>=1.2,<2",
+  "requests>=2.32.5,<3",
+  "sqlalchemy>=2.0.46,<2.1",
+  "tzdata>=2025.3",
+  "waitress>=3.0.2,<4",
 ]
+[dependency-groups]
+dev = ["pytest>=8.3,<10", "playwright>=1.55,<2", "pip-audit>=2.9,<3"]
+[tool.uv]
+package = false
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["mysql: integration tests against MYSQL_TEST_URL", "browser: real Chromium tests"]

@@ -1,4 +1,11 @@
-# Painel API
+# Painel API (entrada legada)
+
+A implantação atual inclui frontend, API, executor, scheduler e backup no Compose
+da raiz. Consulte [o README principal](../README.md). O comando antigo continua
+disponível como compatibilidade, mas já usa Waitress e o novo login individual.
+
+O restante deste documento registra a configuração anterior baseada em token e
+não deve ser usado para uma nova implantação.
 
 API Flask que dispara manualmente as rotinas de extração (`rotina/acao.py`). Deploy independente do scheduler (`../docker-compose.yml`) — não precisa mexer nele.
 

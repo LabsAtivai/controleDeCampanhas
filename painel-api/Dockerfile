@@ -1,20 +1,14 @@
-# Build context é a raiz do repo (../), pois server.py depende de rotina/ e db/
-FROM python:3.11-slim
-
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata \
-    && pip install \
-        "flask>=3.0.0" \
-        "httpx>=0.28.1" \
-        "pandas>=2.3.1" \
-        "pygsheets>=2.0.6" \
-        "pymysql>=1.1.1" \
-        "sqlalchemy>=2.0.43" \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV TZ=America/Sao_Paulo
-ENV PYTHONUNBUFFERED=1
-
+FROM ghcr.io/astral-sh/uv:0.8.22 AS uv
+FROM python:3.12-slim
+COPY --from=uv /uv /usr/local/bin/uv
+ENV PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8 TZ=America/Sao_Paulo UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv UV_NATIVE_TLS=true UV_HTTP_TIMEOUT=120 uv sync --frozen --no-dev --no-install-project
 COPY . .
-
-CMD ["python", "-u", "painel-api/server.py"]
+RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --create-home app
+ENV PATH="/app/.venv/bin:$PATH"
+USER app
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ready', timeout=3)"
+CMD ["python", "-m", "waitress", "--listen=0.0.0.0:8000", "--threads=8", "--call", "webapp:create_app"]

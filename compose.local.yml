@@ -1,0 +1,24 @@
+# Local MySQL instance, without publishing the database port.
+# Set DATABASE_URL in .env to mysql+pymysql://ativa:<MYSQL_PASSWORD>@mysql:3306/dadoscampanha
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: dadoscampanha
+      MYSQL_USER: ativa
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Configure MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Configure MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+  migrate:
+    depends_on:
+      mysql:
+        condition: service_healthy
+volumes:
+  mysql_data:

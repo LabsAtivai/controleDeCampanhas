@@ -1,14 +1,19 @@
-from rotina import acao
-from db.session import create_tables
+"""Manual CLI enqueues durable jobs; it never bypasses the shared executor."""
+import argparse
+from core.jobs import enqueue
+from core.validation import period
+from db.avancos_api import hoje_sp
 
-create_tables()
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--inicio', required=True)
+    parser.add_argument('--fim')
+    args = parser.parse_args()
+    start, end = period(args.inicio, args.fim or args.inicio, max_days=31)
+    if end >= hoje_sp():
+        raise ValueError('Selecione dias fechados anteriores a hoje.')
+    job_id = enqueue('custom', {'inicio':start.isoformat(), 'fim':end.isoformat()}, actor='cli')
+    print('Execução enfileirada: ' + job_id)
 
-print("Inicio do relatório de Campanhas")
-
-for data in ['2026-06-16', '2026-06-17', '2026-06-18', '2026-06-19', '2026-06-20', '2026-06-21', '2026-06-22']:
-    print(f"\n=== Processando {data} ===")
-    acao.extrai_dia_anterior_custom(data)
-
-acao.atualiza_planilhas_controle()
-
-print("Conclusão do relatório de Campanhas")
+if __name__ == '__main__':
+    main()

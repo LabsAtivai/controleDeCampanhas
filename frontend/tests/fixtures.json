@@ -1,0 +1,247 @@
+{
+  "summary": {
+    "Onboarding": [
+      {
+        "cliente": "Cliente Aurora",
+        "contas": [
+          "cliente0@example.test"
+        ],
+        "diasDisparos": 19,
+        "ultimaColeta": "2026-11-09",
+        "avancos": 8,
+        "statusAvanco": "verde",
+        "taxaAbertura": 35,
+        "taxaResposta": 1.75,
+        "totalContacted": 1800,
+        "emailsSent": 2400,
+        "delivered": 2310,
+        "emailOpens": 840,
+        "linkClicks": 95,
+        "emailReplies": 42
+      },
+      {
+        "cliente": "Cliente Norte",
+        "contas": [
+          "cliente1@example.test"
+        ],
+        "diasDisparos": 18,
+        "ultimaColeta": "2026-11-09",
+        "avancos": 0,
+        "statusAvanco": "vermelho",
+        "taxaAbertura": 35,
+        "taxaResposta": 1.75,
+        "totalContacted": 1660,
+        "emailsSent": 2220,
+        "delivered": 2135,
+        "emailOpens": 780,
+        "linkClicks": 88,
+        "emailReplies": 38
+      },
+      {
+        "cliente": "Cliente Horizonte",
+        "contas": [
+          "cliente2@example.test"
+        ],
+        "diasDisparos": 17,
+        "ultimaColeta": "2026-11-09",
+        "avancos": 1,
+        "statusAvanco": "amarelo",
+        "taxaAbertura": 35,
+        "taxaResposta": 1.75,
+        "totalContacted": 1520,
+        "emailsSent": 2040,
+        "delivered": 1960,
+        "emailOpens": 720,
+        "linkClicks": 81,
+        "emailReplies": 34
+      },
+      {
+        "cliente": "Cliente Vértice",
+        "contas": [
+          "cliente3@example.test"
+        ],
+        "diasDisparos": 16,
+        "ultimaColeta": "2026-11-09",
+        "avancos": 4,
+        "statusAvanco": "verde",
+        "taxaAbertura": 35,
+        "taxaResposta": 1.75,
+        "totalContacted": 1380,
+        "emailsSent": 1860,
+        "delivered": 1785,
+        "emailOpens": 660,
+        "linkClicks": 74,
+        "emailReplies": 30
+      },
+      {
+        "cliente": "Cliente Raiz",
+        "contas": [
+          "cliente4@example.test"
+        ],
+        "diasDisparos": 15,
+        "ultimaColeta": "2026-11-09",
+        "avancos": 0,
+        "statusAvanco": "vermelho",
+        "taxaAbertura": 35,
+        "taxaResposta": 1.75,
+        "totalContacted": 1240,
+        "emailsSent": 1680,
+        "delivered": 1610,
+        "emailOpens": 600,
+        "linkClicks": 67,
+        "emailReplies": 26
+      },
+      {
+        "cliente": "Cliente Prisma",
+        "contas": [
+          "cliente5@example.test"
+        ],
+        "diasDisparos": 14,
+        "ultimaColeta": "2026-11-09",
+        "avancos": 0,
+        "statusAvanco": "sem_vinculo",
+        "taxaAbertura": 35,
+        "taxaResposta": 1.75,
+        "totalContacted": 1100,
+        "emailsSent": 1500,
+        "delivered": 1435,
+        "emailOpens": 540,
+        "linkClicks": 60,
+        "emailReplies": 22
+      },
+      {
+        "cliente": "Cliente Cobalto",
+        "contas": [
+          "cliente6@example.test"
+        ],
+        "diasDisparos": 13,
+        "ultimaColeta": "2026-11-09",
+        "avancos": null,
+        "statusAvanco": "indisponivel",
+        "taxaAbertura": 35,
+        "taxaResposta": 1.75,
+        "totalContacted": 960,
+        "emailsSent": 1320,
+        "delivered": 1260,
+        "emailOpens": 480,
+        "linkClicks": 53,
+        "emailReplies": 18
+      }
+    ],
+    "SDR REMOTO": [],
+    "Geral": [],
+    "Sem squad": []
+  },
+  "campaigns": {
+    "Onboarding": [
+      {
+        "cliente": "Cliente Aurora",
+        "conta": "cliente0@example.test",
+        "campaignId": "1",
+        "campanha": "Campanha de teste",
+        "data": "2026-11-09",
+        "avancosHoje": 0,
+        "stale": false,
+        "totalContacted": 1800,
+        "emailsSent": 2400,
+        "delivered": 2310,
+        "emailOpens": 840,
+        "linkClicks": 95,
+        "emailReplies": 42
+      },
+      {
+        "cliente": "Cliente Norte",
+        "conta": "cliente1@example.test",
+        "campaignId": "2",
+        "campanha": "Campanha de teste",
+        "data": "2026-11-09",
+        "avancosHoje": 1,
+        "stale": false,
+        "totalContacted": 1660,
+        "emailsSent": 2220,
+        "delivered": 2135,
+        "emailOpens": 780,
+        "linkClicks": 88,
+        "emailReplies": 38
+      },
+      {
+        "cliente": "Cliente Horizonte",
+        "conta": "cliente2@example.test",
+        "campaignId": "3",
+        "campanha": "Campanha de teste",
+        "data": "2026-11-09",
+        "avancosHoje": 2,
+        "stale": false,
+        "totalContacted": 1520,
+        "emailsSent": 2040,
+        "delivered": 1960,
+        "emailOpens": 720,
+        "linkClicks": 81,
+        "emailReplies": 34
+      },
+      {
+        "cliente": "Cliente Vértice",
+        "conta": "cliente3@example.test",
+        "campaignId": "4",
+        "campanha": "Campanha de teste",
+        "data": "2026-11-09",
+        "avancosHoje": 0,
+        "stale": false,
+        "totalContacted": 1380,
+        "emailsSent": 1860,
+        "delivered": 1785,
+        "emailOpens": 660,
+        "linkClicks": 74,
+        "emailReplies": 30
+      },
+      {
+        "cliente": "Cliente Raiz",
+        "conta": "cliente4@example.test",
+        "campaignId": "5",
+        "campanha": "Campanha de teste",
+        "data": "2026-11-09",
+        "avancosHoje": 1,
+        "stale": false,
+        "totalContacted": 1240,
+        "emailsSent": 1680,
+        "delivered": 1610,
+        "emailOpens": 600,
+        "linkClicks": 67,
+        "emailReplies": 26
+      },
+      {
+        "cliente": "Cliente Prisma",
+        "conta": "cliente5@example.test",
+        "campaignId": "6",
+        "campanha": "Campanha de teste",
+        "data": "2026-11-09",
+        "avancosHoje": 2,
+        "stale": false,
+        "totalContacted": 1100,
+        "emailsSent": 1500,
+        "delivered": 1435,
+        "emailOpens": 540,
+        "linkClicks": 60,
+        "emailReplies": 22
+      },
+      {
+        "cliente": "Cliente Cobalto",
+        "conta": "cliente6@example.test",
+        "campaignId": "7",
+        "campanha": "Campanha de teste",
+        "data": "2026-11-09",
+        "avancosHoje": null,
+        "stale": false,
+        "totalContacted": 960,
+        "emailsSent": 1320,
+        "delivered": 1260,
+        "emailOpens": 480,
+        "linkClicks": 53,
+        "emailReplies": 18
+      }
+    ],
+    "SDR REMOTO": [],
+    "Geral": [],
+    "Sem squad": []
+  }
+}

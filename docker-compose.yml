@@ -1,12 +1,93 @@
+x-common: &common
+  build: .
+  image: ativa-campanhas:local
+  env_file: .env
+  environment:
+    GOOGLE_CREDENTIALS_FILE: /run/secrets/google_credentials
+  secrets:
+    - google_credentials
+  init: true
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+  networks:
+    - default
+    - ativaai
+
 services:
+  migrate:
+    <<: *common
+    restart: "no"
+    command: ["python", "-m", "manage", "migrate"]
+    healthcheck:
+      disable: true
+  api:
+    <<: *common
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      default: {}
+      ativaai:
+        aliases:
+          - campanhas-api
+  worker:
+    <<: *common
+    command: ["python", "-m", "core.jobs"]
+    stop_grace_period: 60s
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
   scheduler:
-    build: .
-    container_name: apscheduler_app
-    restart: always   # garante que sempre reinicie
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      CREDENTIALS_API_URL: ${CREDENTIALS_API_URL}
-      CREDENTIALS_API_KEY: ${CREDENTIALS_API_KEY}
+    <<: *common
+    command: ["python", "app.py"]
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  backup:
+    <<: *common
+    command: ["python", "-m", "manage", "backup-loop"]
+    user: "0:0"
     volumes:
-      # credencial do pygsheets (secret, fora do git) - ja existe em /root/controle no host
-      - /root/controle/sheets.googleapis.com-python.json:/app/sheets.googleapis.com-python.json:ro
+      - ./backups:/backups
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  proxy:
+    image: caddy:2.11
+    profiles: ["https"]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-localhost}
+      TLS_EMAIL: ${TLS_EMAIL:-}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - default
+      - ativaai
+
+secrets:
+  google_credentials:
+    file: ${GOOGLE_CREDENTIALS_HOST_PATH:-./sheets.googleapis.com-python.json}
+volumes:
+  caddy_data:
+  caddy_config:
+networks:
+  ativaai:
+    external: true

@@ -7,6 +7,7 @@ import os
 import time
 
 import httpx
+from core.config import integration_url
 
 
 def _client() -> httpx.Client:
@@ -16,7 +17,7 @@ def _client() -> httpx.Client:
         raise RuntimeError(
             "CREDENTIALS_API_URL e CREDENTIALS_API_KEY precisam estar definidos no ambiente."
         )
-    return httpx.Client(base_url=base_url, headers={"X-API-Key": api_key}, timeout=30)
+    return httpx.Client(base_url=integration_url(base_url), headers={"X-API-Key": api_key}, timeout=30)
 
 
 def _get(client: httpx.Client, url: str, **kwargs) -> httpx.Response:
@@ -28,9 +29,14 @@ def _get(client: httpx.Client, url: str, **kwargs) -> httpx.Response:
             time.sleep(5 * (tentativa + 1))
             continue
         if res.status_code != 429:
-            res.raise_for_status()
+            if res.status_code >= 400:
+                raise RuntimeError(f'Sistema de credenciais retornou HTTP {res.status_code}.')
             return res
-        time.sleep(float(res.headers.get("Retry-After", 5 * (tentativa + 1))))
+        try:
+            delay = min(60, max(1, float(res.headers.get('Retry-After', 5 * (tentativa + 1)))))
+        except ValueError:
+            delay = 5 * (tentativa + 1)
+        time.sleep(delay)
     raise RuntimeError(f"Falha ao consultar {url} após 6 tentativas")
 
 
@@ -69,7 +75,7 @@ def _fetch_active_accounts(client: httpx.Client) -> list[dict]:
             if len(accounts) >= total:
                 break
     if len(accounts) < total:
-        print(f"[AVISO] Paginação incompleta: {len(accounts)}/{total} contas ativas (corrigir ordenação da API)", flush=True)
+        raise RuntimeError(f"[AVISO] Paginação incompleta: {len(accounts)}/{total} contas ativas (corrigir ordenação da API)")
     return list(accounts.values())
 
 
@@ -78,10 +84,15 @@ def _fetch_credentials(client: httpx.Client, account_id: str) -> dict:
     return res.json()
 
 
-def get_active_clients() -> list[dict]:
-    """Retorna uma lista de dicts: id, email, client_id, client_secret, email_snovio, senha."""
+def get_active_clients(ids=None) -> list[dict]:
+    """Retorna uma lista de dicts: id, email, client_id, client_secret, email_snovio."""
     with _client() as client:
         accounts = _fetch_active_accounts(client)
+        if ids is not None:
+            selected = set(ids)
+            if selected - {a['id'] for a in accounts}:
+                raise ValueError('Seleção contém contas inativas ou desconhecidas.')
+            accounts = [a for a in accounts if a['id'] in selected]
         clients = []
         for account in accounts:
             creds = _fetch_credentials(client, account["id"])
@@ -92,7 +103,12 @@ def get_active_clients() -> list[dict]:
                     "client_id": creds["snov_id"],
                     "client_secret": creds["snov_secret"],
                     "email_snovio": creds["snov_email"],
-                    "senha": creds["snov_password"],
                 }
             )
         return clients
+
+
+def get_active_accounts():
+    """Metadata only. Never decrypt credentials for a selection dropdown."""
+    with _client() as client:
+        return _fetch_active_accounts(client)

@@ -1,78 +1,69 @@
+"""Snov.io transport. Never logs upstream bodies, tokens or credential-bearing URLs."""
+import time
 import httpx
-import json
 import pandas as pd
-import pygsheets
-
 from rotina import credentials_api
 
-def gera_token(client_id,client_secret):
-    params = {'grant_type':'client_credentials',
-                'client_id': client_id,
-                'client_secret': client_secret}
-    res = httpx.post('https://api.snov.io/v1/oauth/access_token', data=params)
-    resText = res.text.encode('ascii','ignore')
-    try:
-        token = json.loads(resText)['access_token']
-    except:
-        token=res.text
-        print(res.text)
-    return token
+class SnovError(RuntimeError):
+    def __init__(self, message, status=None):
+        super().__init__(message)
+        self.status = status
 
+def _request(method, path, **kwargs):
+    for attempt in range(4):
+        try:
+            response = httpx.request(method, f'https://api.snov.io{path}', timeout=30, **kwargs)
+        except httpx.TransportError:
+            if attempt == 3:
+                raise SnovError('Snov.io indisponível após 4 tentativas.') from None
+            time.sleep(2 ** attempt)
+            continue
+        if response.status_code in {429, 500, 502, 503, 504} and attempt < 3:
+            time.sleep(2 ** attempt)
+            continue
+        if response.status_code >= 400:
+            raise SnovError(f'Snov.io retornou HTTP {response.status_code}.', response.status_code)
+        try:
+            return response.json()
+        except ValueError:
+            raise SnovError('Resposta inválida do Snov.io.') from None
+
+def gera_token(client_id, client_secret):
+    data = _request('POST', '/v1/oauth/access_token', data={
+        'grant_type': 'client_credentials', 'client_id': client_id, 'client_secret': client_secret})
+    if not isinstance(data, dict) or not isinstance(data.get('access_token'), str):
+        raise SnovError('Snov.io não retornou um token válido.')
+    return data['access_token']
 
 def campanhas(token):
-        
-    headers = {"Authorization": "Bearer "+token}
-    res = httpx.get('https://api.snov.io/v1/get-user-campaigns', headers=headers)
-    resultado = pd.DataFrame(json.loads(res.text))
-    
-    return resultado
+    data = _request('GET', '/v1/get-user-campaigns', headers={'Authorization': f'Bearer {token}'})
+    if not isinstance(data, list):
+        raise SnovError('Formato inesperado na lista de campanhas.')
+    frame = pd.DataFrame(data)
+    if not frame.empty and not {'id', 'campaign', 'status'}.issubset(frame.columns):
+        raise SnovError('Campanhas sem os campos obrigatórios.')
+    return frame
 
-def senhas():
-    """Contas ativas via sistema de credenciais (não lê mais o Google Sheets).
-    Mantém as mesmas colunas que o resto do código já espera (Email, Client id,
-    Client Secret, Email Snovio) — só troca a fonte. 'id' também vem disponível,
-    é o id da conta no sistema de credenciais (usado pra cruzar com contas_snovio).
-    """
-    clientes = credentials_api.get_active_clients()
-    df = pd.DataFrame(clientes)
-    df = df.rename(columns={
-        "email": "Email",
-        "client_id": "Client id",
-        "client_secret": "Client Secret",
-        "email_snovio": "Email Snovio",
-    })
-    return df
+def senhas(ids=None):
+    return pd.DataFrame(credentials_api.get_active_clients(ids),
+        columns=['id', 'email', 'client_id', 'client_secret', 'email_snovio']).rename(columns={
+        'email': 'Email', 'client_id': 'Client id', 'client_secret': 'Client Secret', 'email_snovio': 'Email Snovio'})
 
-def contas_ativas():
-    """Campanhas ativas via MySQL (contas_snovio/campanhas) — não lê mais o
-    Google Sheets. Ver db/crud.py::get_campanhas_ativas."""
-    from db import crud
-    return crud.get_campanhas_ativas()
+def contas_ativas(historico=False):
+    from db.crud import get_campanhas_ativas
+    return get_campanhas_ativas(historico=historico)
 
-def user_lists(token,id):
-    params = {'access_token':token,
-            'campaignId':int(id)
-    }
-    res = httpx.get('https://api.snov.io/v1/emails-sent', params=params,timeout=30)
+def get_campaign_analytics(token, id, inicio, final):
+    data = _request('GET', '/v2/statistics/campaign-analytics', params={
+        'access_token': token, 'campaign_id': str(id), 'date_from': inicio, 'date_to': final})
+    fields = {'total_contacted', 'emails_sent', 'delivered', 'email_opens', 'link_clicks', 'email_replies'}
+    if not isinstance(data, dict) or not fields.issubset(data):
+        raise SnovError('Métricas incompletas na resposta do Snov.io.')
+    for field in fields:
+        value = data[field]
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0 or int(value) != value:
+            raise SnovError(f'Métrica inválida: {field}.')
+    return data
 
-    return pd.DataFrame(json.loads(res.text))
-
-
-def get_campaign_analytics(token,id,inicio,final):
-   campaign_ids = [id]
-   #sender_email_ids = [21, 22]
-   #sender_linkedin_ids = [31, 32, 33]
-   #owner_emails = ['owner1@email.loc', 'owner2@email.loc']
-
-   params = {
-       'access_token': token,
-       'campaign_id': ','.join(map(str, campaign_ids)),
-       #'sender_email': ','.join(map(str, sender_email_ids)),
-       #'sender_linkedin': ','.join(map(str, sender_linkedin_ids)),
-       #'campaign_owner': ','.join(owner_emails),
-       'date_from': inicio,
-       'date_to': final,
-   }
-
-   res = httpx.get('https://api.snov.io/v2/statistics/campaign-analytics', params=params, timeout=30)
-   return json.loads(res.text)
+def user_lists(token, id):
+    return pd.DataFrame(_request('GET', '/v1/emails-sent', params={'access_token': token, 'campaignId': int(id)}))

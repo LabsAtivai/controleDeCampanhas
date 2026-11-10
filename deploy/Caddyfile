@@ -1,0 +1,11 @@
+{
+    email {$TLS_EMAIL}
+}
+{$PUBLIC_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy api:8000
+    log {
+        output stdout
+        format json
+    }
+}
