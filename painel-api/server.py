@@ -9,7 +9,7 @@ from functools import wraps
 from flask import Flask, jsonify, request
 
 from db.session import create_tables
-from db import dashboard, crud
+from db import avancos_api, dashboard, crud
 from rotina import acao, credentials_api
 
 create_tables()
@@ -220,13 +220,20 @@ def deletar_avanco(avanco_id):
 @app.route("/api/analise-cliente")
 @require_token
 def analise_cliente():
-    conta = request.args.get("conta")
+    cliente = request.args.get("cliente") or request.args.get("conta")
     inicio = request.args.get("inicio")
     fim = request.args.get("fim")
-    if not conta:
-        return jsonify({"error": "informe 'conta' (ex: abluo@ativa.ai)"}), 400
+    if not cliente:
+        return jsonify({"error": "informe 'cliente'"}), 400
     try:
-        return jsonify({"conta": conta, "dias": crud.get_analise_cliente(conta, inicio, fim)})
+        return jsonify({
+            "cliente": cliente,
+            "dias": crud.get_analise_cliente(cliente, inicio, fim),
+            "statusAvanco": (
+                avancos_api.status_por_cliente().get(avancos_api._norm(cliente), "vermelho")
+                if avancos_api.tem_vinculo(cliente) else "sem_vinculo"
+            ),
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

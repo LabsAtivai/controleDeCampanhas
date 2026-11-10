@@ -131,13 +131,15 @@ function formatNumero(n) {
   if (n === null || n === undefined) return '—';
   return Number(n).toLocaleString('pt-BR');
 }
+// Datas sempre em America/Sao_Paulo (toISOString usa UTC e vira o dia depois das 21h)
+function dataSP(d) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(d);
+}
 function hoje() {
-  return new Date().toISOString().slice(0, 10);
+  return dataSP(new Date());
 }
 function diasAtras(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  return dataSP(new Date(Date.now() - n * 86400000));
 }
 
 function selecionarPeriodo(periodo) {
@@ -193,10 +195,10 @@ function popularSelectClientes() {
     if (!contas.length) continue;
     const grupo = document.createElement('optgroup');
     grupo.label = squad;
-    for (const c of contas.slice().sort((a, b) => a.conta.localeCompare(b.conta))) {
+    for (const c of contas.slice().sort((a, b) => a.cliente.localeCompare(b.cliente))) {
       const opt = document.createElement('option');
-      opt.value = c.conta;
-      opt.textContent = c.conta;
+      opt.value = c.cliente;
+      opt.textContent = c.cliente;
       grupo.appendChild(opt);
     }
     select.appendChild(grupo);
@@ -205,8 +207,8 @@ function popularSelectClientes() {
 }
 
 function statusBadge(status) {
-  const cores = { verde: 'var(--green)', amarelo: 'var(--amber)', vermelho: 'var(--red)' };
-  const labels = { verde: 'Em dia', amarelo: 'Atenção', vermelho: 'Sem avanço' };
+  const cores = { verde: 'var(--green)', amarelo: 'var(--amber)', vermelho: 'var(--red)', sem_vinculo: 'var(--text3)' };
+  const labels = { verde: 'Em dia', amarelo: 'Atenção', vermelho: 'Sem avanço', sem_vinculo: 'Sem vínculo' };
   const cor = cores[status] || 'var(--text3)';
   const label = labels[status] || '—';
   return `<span style="display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif"><span style="width:8px;height:8px;border-radius:50%;background:${cor};display:inline-block;flex-shrink:0"></span>${label}</span>`;
@@ -227,7 +229,7 @@ function renderVisaoGeral() {
 
   const nomesSquad = Object.keys(contasResumo);
   const textoFiltro = (document.getElementById('filtroConta')?.value || '').trim().toLowerCase();
-  const linhasFiltradas = textoFiltro ? linhas.filter(l => (l.conta || '').toLowerCase().includes(textoFiltro)) : linhas;
+  const linhasFiltradas = textoFiltro ? linhas.filter(l => (l.cliente || '').toLowerCase().includes(textoFiltro)) : linhas;
   const linhasOrdenadas = linhasFiltradas.slice().sort((a, b) => b.emailsSent - a.emailsSent);
 
   const tabelaResumo = `
@@ -242,8 +244,8 @@ function renderVisaoGeral() {
       </thead>
       <tbody>
         ${linhasOrdenadas.length ? linhasOrdenadas.map(l => `
-          <tr onclick="selecionarCliente('${l.conta.replace(/'/g, "\\'")}')">
-            <td class="cell-conta">${escapeHtml(l.conta)}</td>
+          <tr onclick="selecionarCliente('${l.cliente.replace(/'/g, "\\'")}')">
+            <td class="cell-conta">${escapeHtml(l.cliente)}</td>
             <td>${formatNumero(l.emailsSent)}</td>
             <td>${l.avancos ? formatNumero(l.avancos) : '—'}</td>
             <td>${statusBadge(l.statusAvanco)}</td>
@@ -257,7 +259,7 @@ function renderVisaoGeral() {
     <table class="grid-table">
       <thead>
         <tr>
-          <th>Conta</th>
+          <th>Cliente</th>
           <th>Dias disparo</th>
           <th>Contatados</th>
           <th>Enviados</th>
@@ -271,8 +273,8 @@ function renderVisaoGeral() {
       </thead>
       <tbody>
         ${linhasFiltradas.length ? linhasFiltradas.slice().sort((a, b) => b.totalContacted - a.totalContacted).map(l => `
-          <tr onclick="selecionarCliente('${l.conta.replace(/'/g, "\\'")}')">
-            <td class="cell-conta">${escapeHtml(l.conta)}</td>
+          <tr onclick="selecionarCliente('${l.cliente.replace(/'/g, "\\'")}')">
+            <td class="cell-conta">${escapeHtml(l.cliente)}</td>
             <td>${formatNumero(l.diasDisparos)}</td>
             <td>${formatNumero(l.totalContacted)}</td>
             <td>${formatNumero(l.emailsSent)}</td>
@@ -367,14 +369,14 @@ async function carregarCliente(conta) {
   if (params === null) return;
   el.innerHTML = '<div class="empty-state">Carregando...</div>';
   try {
-    const resp = await api(`/api/analise-cliente?conta=${encodeURIComponent(conta)}${params}`);
-    renderCliente(resp.conta, resp.dias);
+    const resp = await api(`/api/analise-cliente?cliente=${encodeURIComponent(conta)}${params}`);
+    renderCliente(resp.cliente, resp.dias, resp.statusAvanco);
   } catch (e) {
     el.innerHTML = `<div class="empty-state" style="color:var(--red)">${escapeHtml(e.message)}</div>`;
   }
 }
 
-function renderCliente(conta, dias) {
+function renderCliente(conta, dias, status) {
   const el = document.getElementById('conteudo');
   const voltar = `<div class="back-link" onclick="voltarVisaoGeral()">← voltar pra todas as contas</div>`;
   if (!dias.length) {
@@ -385,9 +387,6 @@ function renderCliente(conta, dias) {
   const ultimo = dias[dias.length - 1];
   const totalAvancos = dias.reduce((s, d) => s + (d.avancos || 0), 0);
   const diasDisparo = dias.filter(d => d.emailsSent > 0).length;
-  const janelaRecente = new Set([hoje(), diasAtras(1), diasAtras(2)]);
-  const avancosRecentes = dias.filter(d => janelaRecente.has(d.data)).reduce((s, d) => s + (d.avancos || 0), 0);
-  const status = avancosRecentes >= 2 ? 'verde' : avancosRecentes === 1 ? 'amarelo' : 'vermelho';
 
   const largura = 1000, altura = 220;
   const maxCumulativo = Math.max(...dias.map(d => d.cumEmailsSent), 1);
@@ -413,7 +412,7 @@ function renderCliente(conta, dias) {
         <div class="kpi-value">${formatNumero(totalAvancos)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Status (3 dias)</div>
+        <div class="kpi-label">Status (3 dias, sem hoje)</div>
         <div class="kpi-value" style="font-size:16px;padding-top:5px">${statusBadge(status)}</div>
       </div>
     </div>
@@ -435,7 +434,7 @@ function renderCliente(conta, dias) {
 
     <div class="chart-card" style="margin-bottom:18px">
       <div class="chart-title">Avanços por dia</div>
-      <div class="chart-subtitle">quantidade registrada manualmente pelo time</div>
+      <div class="chart-subtitle">avanços vindos do sistema de avanços (Nutrição não conta no status)</div>
       <svg viewBox="0 0 ${largura} 80" style="width:100%;height:80px;display:block">
         ${barrasSvg(dias, 'avancos', 'var(--amber)', maxAvancos, largura, 80)}
       </svg>
@@ -483,7 +482,7 @@ function voltarVisaoGeral() {
 document.getElementById('selectCliente').addEventListener('change', carregar);
 
 const params = new URLSearchParams(window.location.search);
-const contaInicial = params.get('conta');
+const contaInicial = params.get('cliente') || params.get('conta');
 carregarVisaoGeral().then(() => {
   if (contaInicial) selecionarCliente(contaInicial);
 });

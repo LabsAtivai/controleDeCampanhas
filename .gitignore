@@ -20,3 +20,10 @@ sheets.googleapis.com-python.json
 
 # Dumps de dados (não é fonte)
 planilha.csv
+
+# Local tooling e dumps
+.claude/
+.impeccable/
+docs/*.xlsx
+docs/*.csv
+_*.log

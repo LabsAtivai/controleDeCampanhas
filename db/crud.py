@@ -177,13 +177,15 @@ def remove_avanco(avanco_id: int) -> bool:
         return True
 
 
-def get_analise_cliente(conta: str, inicio: str = None, fim: str = None) -> list:
-    """Série diária de disparos de um cliente (identificado por conta, ex:
-    abluo@ativa.ai), somando todas as campanhas dele por dia, cruzado com a
-    quantidade de avanços manuais do dia. Base pra tela de análise por cliente.
+def get_analise_cliente(cliente: str, inicio: str = None, fim: str = None) -> list:
+    """Série diária de disparos de um cliente (nome no sistema de avanços), somando
+    todas as contas e campanhas dele por dia, cruzado com os avanços do dia
+    (sistema de avanços). Cliente sem credencial cadastrada é tratado como conta. Base pra tela de análise por cliente.
     inicio/fim em 'YYYY-MM-DD' (inclusive) — se omitidos, traz o histórico inteiro."""
     from sqlalchemy import func
+    from db import avancos_api
 
+    contas = avancos_api.contas_do_cliente(cliente) or [cliente]
     with Session(engine) as session:
         query_dados = session.query(
             Dados.data,
@@ -193,16 +195,13 @@ def get_analise_cliente(conta: str, inicio: str = None, fim: str = None) -> list
             func.sum(Dados.email_opens),
             func.sum(Dados.links_clicks),
             func.sum(Dados.email_replies),
-        ).filter(Dados.conta == conta)
-        query_avancos = session.query(Avanco.data, func.sum(Avanco.quantidade)).filter(Avanco.conta == conta)
+        ).filter(func.lower(Dados.conta).in_([c.lower() for c in contas]))
         if inicio and fim:
             query_dados = query_dados.filter(Dados.data.between(inicio, fim))
-            query_avancos = query_avancos.filter(Avanco.data.between(inicio, fim))
 
         linhas_dados = query_dados.group_by(Dados.data).order_by(Dados.data).all()
-        linhas_avancos = query_avancos.group_by(Avanco.data).all()
 
-    avancos_por_dia = {data: int(qtd) for data, qtd in linhas_avancos}
+    avancos_por_dia = avancos_api.avancos_dia_do_cliente(cliente, inicio, fim)
     dados_por_dia = {
         data: {
             "totalContacted": int(contatados or 0),

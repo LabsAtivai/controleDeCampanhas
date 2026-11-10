@@ -34,7 +34,7 @@ def extrai_campanhas(ids_selecionados=None):
             'client_id': client_id,
             'client_secret': client_secret
         }
-        res = httpx.post('https://api.snov.io/v1/oauth/access_token', data=params)
+        res = httpx.post('https://api.snov.io/v1/oauth/access_token', data=params, timeout=30)
         resText = res.text.encode('ascii', 'ignore')
         token = json.loads(resText)['access_token']
         return token
@@ -53,7 +53,7 @@ def extrai_campanhas(ids_selecionados=None):
             last_request_time = time.time()
 
         headers = {"Authorization": "Bearer " + token}
-        res = httpx.get('https://api.snov.io/v1/get-user-campaigns', headers=headers)
+        res = httpx.get('https://api.snov.io/v1/get-user-campaigns', headers=headers, timeout=30)
         resultado = pd.DataFrame(json.loads(res.text))
         return resultado
 
@@ -66,7 +66,7 @@ def extrai_campanhas(ids_selecionados=None):
                 campanha_df = campanha_df.dropna(subset=['id']).drop_duplicates(subset=['id'])
             return campanha_df
         except Exception as e:
-            #print(f"Erro para o cliente {row['Email Snovio']}: {e}")
+            print(f"[ERRO] campanhas de {row['Email Snovio']}: {e}", flush=True)
             return pd.DataFrame()
 
     clientes_com_campanhas = []
@@ -118,7 +118,19 @@ def atualiza_aba_campanhas_master(clientes_com_campanhas):
     aba.set_dataframe(df, start='A1', fit=True)
     print(f"✅ Aba 'campanhas' do Sheet mestre atualizada ({len(df)} linhas)")
         
+_tokens = {}
+
+def token_da_conta(client_id, client_secret):
+    """Um token por conta (evita 1 chamada oauth por campanha e estouro do rate limit do Snov)."""
+    if client_id not in _tokens:
+        token = api.gera_token(client_id, client_secret)
+        if not isinstance(token, str) or not token or token.lstrip().startswith('{'):
+            raise RuntimeError(f"token invalido: {token}")
+        _tokens[client_id] = token
+    return _tokens[client_id]
+
 def extrai_dia_anterior():
+    _tokens.clear()
     print("Iniciando processo para extração do Status do Dia Anterior")
     df = api.senhas()
     contas = api.contas_ativas()
@@ -129,7 +141,7 @@ def extrai_dia_anterior():
 
     def processa_conta(row):
         try:
-            token_acesso = api.gera_token(row['Client id'], row['Client Secret'])
+            token_acesso = token_da_conta(row['Client id'], row['Client Secret'])
             inicio = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
             final = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
             dados = api.get_campaign_analytics(token_acesso, row['id'], inicio, final)
@@ -199,7 +211,8 @@ def extrai_dia_anterior():
     crud.atualiza_registros(df_resultados)
     print("✅ Processo concluído com sucesso.")
     
-def extrai_dia_anterior_custom(data='2026-03-24'):
+def extrai_dia_anterior_custom(data='2026-03-24', contas_filtro=None):
+    _tokens.clear()
     print("Iniciando processo para extração do Status do Dia Anterior")
 
     if isinstance(data, str):
@@ -218,10 +231,12 @@ def extrai_dia_anterior_custom(data='2026-03-24'):
         df[['Email Snovio', 'Client id', 'Client Secret']],
         left_on='conta', right_on='Email Snovio', how='inner'
     )
+    if contas_filtro:
+        contas = contas[contas['conta'].isin(contas_filtro)]
 
     def processa_conta(row):
         try:
-            token_acesso = api.gera_token(row['Client id'], row['Client Secret'])
+            token_acesso = token_da_conta(row['Client id'], row['Client Secret'])
             inicio = data_ref.strftime('%Y-%m-%d')
             final = data_ref.strftime('%Y-%m-%d')
             dados = api.get_campaign_analytics(token_acesso, row['id'], inicio, final)
