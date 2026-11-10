@@ -258,24 +258,29 @@ def tem_vinculo(cliente: str) -> bool:
 def avancos_por_cliente_dia(inicio: str = None, fim: str = None, so_semaforo: bool = False) -> dict:
     """{cliente_canônico_normalizado: {'YYYY-MM-DD': quantidade}} num intervalo.
     so_semaforo=True descarta os tipos que não contam pro semáforo (Nutrição)."""
-    saida = defaultdict(lambda: defaultdict(int))
     if not inicio and not fim:
         fim = hoje_sp().isoformat()
         inicio = (hoje_sp() - timedelta(days=365)).isoformat()
-    cursor = None
-    while True:
-        params = {'dataInicio': inicio, 'dataFim': fim}
-        if cursor:
-            params['cursor'] = cursor
-        response = _get('/integracoes/painel/v1/resumo', **params)
-        for row in response.get('dias', []):
-            name = resolve_cliente(row['cliente'])
-            count = sum(int(v) for tipo, v in row['porTipo'].items() if not so_semaforo or _conta_no_semaforo(tipo))
-            saida[name][str(row['data'])[:10]] += count
-        cursor = response.get('proximaPagina')
-        if not cursor:
-            break
-    return saida
+
+    def carrega():
+        saida = defaultdict(lambda: defaultdict(int))
+        cursor = None
+        while True:
+            params = {'dataInicio': inicio, 'dataFim': fim}
+            if cursor:
+                params['cursor'] = cursor
+            response = _get('/integracoes/painel/v1/resumo', **params)
+            for row in response.get('dias', []):
+                name = resolve_cliente(row['cliente'])
+                count = sum(int(v) for tipo, v in row['porTipo'].items()
+                            if not so_semaforo or _conta_no_semaforo(tipo))
+                saida[name][str(row['data'])[:10]] += count
+            cursor = response.get('proximaPagina')
+            if not cursor:
+                break
+        return {cliente: dict(dias) for cliente, dias in saida.items()}
+
+    return _cached(('avancos_summary', inicio, fim, so_semaforo), carrega)
 
 
 def avancos_dia_do_cliente(cliente: str, inicio: str = None, fim: str = None) -> dict:
@@ -321,5 +326,7 @@ def status_avanco(por_dia: dict) -> str:
 
 def status_por_cliente() -> dict:
     """{cliente_normalizado: status} — janela fixa, independe do período da tela."""
-    response = _get('/integracoes/painel/v1/status', dias=3, excluirHoje='true')
-    return {_norm(row['cliente']): row['status'] for row in response['registros']}
+    def carrega():
+        response = _get('/integracoes/painel/v1/status', dias=3, excluirHoje='true')
+        return {_norm(row['cliente']): row['status'] for row in response['registros']}
+    return _cached('status_semáforo', carrega)
