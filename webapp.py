@@ -1,6 +1,7 @@
 """Same-origin web application. Schema creation and job execution are separate commands."""
 import json
 import os
+from urllib.parse import urlparse
 from datetime import datetime, timedelta
 from core.time import utcnow
 
@@ -87,8 +88,18 @@ def create_app(test_config=None):
     @app.post('/api/auth/login')
     def auth_login():
         origin = request.headers.get('Origin')
-        if origin and origin.rstrip('/') != request.host_url.rstrip('/'):
-            return jsonify(error='Origem inválida.'), 403
+        if origin:
+            public_domain = os.getenv('PUBLIC_DOMAIN', '').strip().rstrip('/')
+            if public_domain:
+                configured = public_domain if '://' in public_domain else (
+                    ('https://' if enabled('COOKIE_SECURE', True) else f'{request.scheme}://') + public_domain
+                )
+                parsed = urlparse(configured)
+                expected_origin = f'{parsed.scheme}://{parsed.netloc}'
+            else:
+                expected_origin = request.host_url.rstrip('/')
+            if origin.rstrip('/') != expected_origin:
+                return jsonify(error='Origem inválida.'), 403
         body = json_object(request)
         user, code = login(body.get('email'), body.get('password'))
         if not user:
