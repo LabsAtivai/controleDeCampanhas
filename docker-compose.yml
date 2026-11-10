@@ -1,9 +1,34 @@
 x-common: &common
   build: .
   image: ativa-campanhas:local
-  env_file: .env
   environment:
+    DATABASE_URL: ${DATABASE_URL:?Configure DATABASE_URL no stack}
+    SECRET_KEY: ${SECRET_KEY:?Configure SECRET_KEY no stack}
+    ADMIN_EMAIL: ${ADMIN_EMAIL:?Configure ADMIN_EMAIL no stack}
+    ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Configure ADMIN_PASSWORD no stack}
+    COOKIE_SECURE: ${COOKIE_SECURE:-true}
+    TRUST_PROXY: ${TRUST_PROXY:-true}
+    ALLOW_LEGACY_TOKEN: ${ALLOW_LEGACY_TOKEN:-false}
+    PAINEL_TOKEN: ${PAINEL_TOKEN:-}
+    CREDENTIALS_API_URL: ${CREDENTIALS_API_URL:?Configure CREDENTIALS_API_URL no stack}
+    CREDENTIALS_API_KEY: ${CREDENTIALS_API_KEY:?Configure CREDENTIALS_API_KEY no stack}
+    AVANCOS_API_URL: ${AVANCOS_API_URL:?Configure AVANCOS_API_URL no stack}
+    AVANCOS_API_KEY: ${AVANCOS_API_KEY:?Configure AVANCOS_API_KEY no stack}
+    AVANCOS_API_KEY_HEADER: ${AVANCOS_API_KEY_HEADER:-X-API-Key}
+    AVANCOS_FRONTEND_URL: ${AVANCOS_FRONTEND_URL:-}
+    ALLOW_INSECURE_INTEGRATIONS: ${ALLOW_INSECURE_INTEGRATIONS:-false}
+    SEMAFORO_TIPOS: ${SEMAFORO_TIPOS:-Interessado}
+    INTEGRATION_MAX_STALE_SECONDS: ${INTEGRATION_MAX_STALE_SECONDS:-86400}
+    LISTAS_SQUAD_DATABASE_URL: ${LISTAS_SQUAD_DATABASE_URL:-}
+    SQUAD_MAPPING_TABLE: ${SQUAD_MAPPING_TABLE:-relatoriolistas.listas_squad}
+    GOOGLE_SHEETS_ENABLED: ${GOOGLE_SHEETS_ENABLED:-false}
+    GOOGLE_MASTER_SHEET_ID: ${GOOGLE_MASTER_SHEET_ID:-}
     GOOGLE_CREDENTIALS_FILE: /run/secrets/google_credentials
+    PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-}
+    TLS_EMAIL: ${TLS_EMAIL:-}
+    ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+    BACKUP_DIRECTORY: ${BACKUP_DIRECTORY:-/backups}
+    SNOV_REQUEST_INTERVAL: ${SNOV_REQUEST_INTERVAL:-1}
   secrets:
     - google_credentials
   init: true
@@ -84,7 +109,7 @@ services:
 
 secrets:
   google_credentials:
-    file: ${GOOGLE_CREDENTIALS_HOST_PATH:-./sheets.googleapis.com-python.json}
+    file: ${GOOGLE_CREDENTIALS_HOST_PATH:-/dev/null}
 volumes:
   caddy_data:
   caddy_config:
