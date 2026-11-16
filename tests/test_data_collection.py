@@ -111,3 +111,26 @@ def test_backfill_includes_paused_campaigns(monkeypatch):
     prepare_collection(monkeypatch)
     monkeypatch.setattr(acao.api, 'get_campaign_analytics', lambda *args: {k:v for k,v in metric().items() if k not in {'conta','campanha','id_conta','data'}})
     assert acao.extrai_dia_anterior_custom('2026-01-01')['collected'] == 1
+
+
+def test_campaigns_without_credential_are_skipped_not_failed(monkeypatch):
+    crud.sincroniza_campanhas([(account(), campaign(100)),
+                               (account('b', 'b@test.example'), campaign(200))])
+    prepare_collection(monkeypatch)
+    monkeypatch.setattr(acao.api, 'get_campaign_analytics', lambda *args: {k:v for k,v in metric().items() if k not in {'conta','campanha','id_conta','data'}})
+    result = acao.extrai_dia_anterior_custom('2026-01-01')
+    assert result['collected'] == 1
+    assert result['skipped'] == ['200']
+    assert result['failed'] == []
+
+
+def test_auth_rejection_on_inactive_campaign_is_skipped_but_active_fails(monkeypatch):
+    class Rejected(Exception):
+        status = 401
+    crud.sincroniza_campanhas([(account(), pd.concat([campaign(100, 'Archived'), campaign(101, 'Active')]))])
+    prepare_collection(monkeypatch)
+    monkeypatch.setattr(acao.api, 'get_campaign_analytics', Mock(side_effect=Rejected()))
+    with pytest.raises(acao.CollectionError) as failure:
+        acao.extrai_dia_anterior_custom('2026-01-01')
+    assert failure.value.result['skipped'] == ['100']
+    assert [f['campaign'] for f in failure.value.result['failed']] == ['101']
