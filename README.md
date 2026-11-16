@@ -170,6 +170,17 @@ uv run python -m manage user administrador@empresa.com --role admin
 
 As senhas são solicitadas sem eco. Alterar acesso invalida as sessões anteriores.
 
+## Checklist de produção
+
+1. Copie `.env.production.example` para `.env` no servidor e preencha todas as variáveis obrigatórias.
+2. Confirme que a rede docker externa `ativaai` existe (`docker network ls`) e que `CREDENTIALS_API_URL` e `AVANCOS_API_URL` usam os hosts internos dela.
+3. Para publicar planilhas, defina `GOOGLE_SHEETS_ENABLED=true`, `GOOGLE_MASTER_SHEET_ID` e `GOOGLE_CREDENTIALS_HOST_PATH`.
+4. Faça um backup antes de atualizar: `uv run python -m manage backup backups/antes-da-atualizacao.jsonl.gz`.
+5. Suba com `docker compose --profile https up -d --build`. O serviço `migrate` roda antes dos demais.
+6. Verifique `GET /api/ready` e os logs de `worker` e `scheduler`.
+7. Rollback: volte ao commit anterior, rode o mesmo `up -d --build` e, se necessário, restaure o backup (seção abaixo).
+8. Contas novas só entram na coleta depois de cadastradas na API de credenciais e sincronizadas (`extrai_campanhas`).
+
 ## Backup e recuperação
 
 O serviço de backup grava diariamente `backups/*.jsonl.gz`, com retenção local de
