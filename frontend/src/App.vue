@@ -79,7 +79,7 @@ function dismiss(id) {
       </footer>
     </div>
   </div>
-  <dialog ref="mobileMenu" class="mobile-navigation">
+  <dialog ref="mobileMenu" class="mobile-navigation" aria-label="Navegação móvel">
     <div class="mobile-navigation-heading">
       <RouterLink class="brand" to="/dados.html"><BrandMark /><span>ativa.</span></RouterLink
       ><button class="sidebar-logout" aria-label="Fechar navegação" @click="mobileMenu.close()">

@@ -48,6 +48,16 @@ def test_browser_login_analysis_xss_mobile_and_operations(app, monkeypatch, tmp_
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
         login_ui(page, url)
+        page.set_viewport_size({'width': 390, 'height': 844})
+        page.get_by_role('button', name='Abrir navegação').click()
+        menu = page.locator('dialog.mobile-navigation')
+        expect(menu).to_be_visible()
+        assert page.evaluate("document.querySelector('.mobile-navigation').matches(':modal')")
+        assert menu.locator(':focus').count() == 1
+        page.keyboard.press('Escape')
+        expect(menu).not_to_be_visible()
+        expect(page.get_by_role('button', name='Abrir navegação')).to_be_focused()
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         page.get_by_role('button', name='Sem squad', exact=True).click()
         page.wait_for_selector('#gridBody a')
         page.goto(url + '/analise.html')
@@ -59,14 +69,15 @@ def test_browser_login_analysis_xss_mobile_and_operations(app, monkeypatch, tmp_
         row.dispatch_event('mouseover')
         assert page.evaluate('window.__auditXss') is None
         assert row.get_attribute('data-client') == payload
-        page.set_viewport_size({'width': 390, 'height': 844})
         overflow = page.evaluate("[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1).slice(0,20).map(e=>({tag:e.tagName,id:e.id,cls:e.className,width:e.getBoundingClientRect().width}))")
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), overflow
         page.screenshot(path=str(tmp_path / 'analise-mobile.png'), full_page=True)
         page.goto(url + '/index.html')
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         page.get_by_role('button', name='Extrair campanhas', exact=True).click()
         expect(page.locator('#jobHistory')).to_contain_text('campanhas', timeout=15000)
         page.goto(url + '/equipe.html')
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         page.wait_for_selector('#users tr')
         assert page.locator('#users').inner_text().find('admin@example.test') >= 0
         assert not errors
