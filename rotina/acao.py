@@ -48,9 +48,17 @@ def extrai_campanhas(ids_selecionados=None):
         atualiza_aba_campanhas_master()
     return result
 
-def _replace_sheet(worksheet, frame):
+def _date_serials(series):
+    """Converte 'YYYY-MM-DD' (ou 'DD/MM/YYYY') em número serial do Sheets; mantém o texto se não for data."""
+    parsed = pd.to_datetime(series, format='%Y-%m-%d', errors='coerce')
+    parsed = parsed.fillna(pd.to_datetime(series, format='%d/%m/%Y', errors='coerce'))
+    serial = (parsed - pd.Timestamp('1899-12-30')).dt.days
+    return [float(s) if pd.notna(s) else original for s, original in zip(serial, series)]
+
+def _replace_sheet(worksheet, frame, date_columns=()):
     """One updateCells request replaces values and clears the old tail atomically.
-    Sheet id stays unchanged, preserving IMPORTRANGE and existing references."""
+    Sheet id stays unchanged, preserving IMPORTRANGE and existing references.
+    date_columns: colunas com serial de data, exibidas como dd/mm/aaaa."""
     values = [list(frame.columns)] + frame.fillna('').astype(object).values.tolist()
     cells = [{'values': [{'userEnteredValue': {'numberValue': float(v)}
         if isinstance(v, (int, float)) and not isinstance(v, bool) else {'stringValue': str(v)}} for v in row]} for row in values]
@@ -61,6 +69,13 @@ def _replace_sheet(worksheet, frame):
             'gridProperties': {'rowCount': height, 'columnCount': width}}, 'fields': 'gridProperties(rowCount,columnCount)'}})
     requests.append({'updateCells': {'range': {'sheetId': worksheet.id, 'startRowIndex': 0, 'endRowIndex': height,
         'startColumnIndex': 0, 'endColumnIndex': width}, 'rows': cells, 'fields': 'userEnteredValue'}})
+    for name in date_columns:
+        if name in frame.columns:
+            index = list(frame.columns).index(name)
+            requests.append({'repeatCell': {'range': {'sheetId': worksheet.id, 'startRowIndex': 1, 'endRowIndex': max(len(values), 2),
+                'startColumnIndex': index, 'endColumnIndex': index + 1},
+                'cell': {'userEnteredFormat': {'numberFormat': {'type': 'DATE', 'pattern': 'dd/mm/yyyy'}}},
+                'fields': 'userEnteredFormat.numberFormat'}})
     worksheet.client.sheet.batch_update(worksheet.spreadsheet.id, requests)
 
 def atualiza_aba_campanhas_master():
@@ -103,6 +118,13 @@ def extrai_dia_anterior_custom(data=None, contas_filtro=None, credenciais=None):
     if campaigns.empty:
         raise CollectionError('Nenhuma campanha cadastrada; sincronize campanhas primeiro.', {'expected': 0, 'collected': 0, 'failed': []})
     available = {r['Email Snovio']: r for r in credentials.to_dict('records')}
+    # Campanhas de contas sem credencial ativa não têm como ser coletadas; ignorar e
+    # informar em `skipped`, em vez de abortar o dia.
+    sem_credencial = ~campaigns['conta'].isin(available)
+    skipped = [str(i) for i in campaigns.loc[sem_credencial, 'id']]
+    if skipped:
+        print(f'{len(skipped)} campanha(s) sem credencial ignorada(s).', flush=True)
+    campaigns = campaigns[~sem_credencial]
     tokens, results, failed = {}, [], []
     for i, campaign in enumerate(campaigns.to_dict('records'), 1):
         print(f"[{i}/{len(campaigns)}] {ref}: campanha {campaign['id']}", flush=True)
@@ -110,7 +132,7 @@ def extrai_dia_anterior_custom(data=None, contas_filtro=None, credenciais=None):
         if not account:
             failed.append({'campaign': str(campaign['id']), 'reason': 'Conta sem credencial ativa.'})
             continue
-        metrics = None
+        metrics, auth_error = None, False
         for attempt in range(3):
             try:
                 cached = tokens.get(account['Client id'])
@@ -120,19 +142,23 @@ def extrai_dia_anterior_custom(data=None, contas_filtro=None, credenciais=None):
                 metrics = api.get_campaign_analytics(cached[1], campaign['id'], ref, ref)
                 break
             except Exception as exc:
-                if getattr(exc, 'status', None) in {401, 403}:
+                auth_error = getattr(exc, 'status', None) in {401, 403}
+                if auth_error:
                     tokens.pop(account['Client id'], None)
                 print(f"Tentativa {attempt + 1}: {type(exc).__name__}", flush=True)
                 if attempt < 2:
                     time.sleep(2 ** attempt)
-        if metrics is None:
+        if metrics is None and auth_error and campaign['status'] != 'Active':
+            # Credencial recusada pelo Snov (401/403) em campanha não ativa: não coletável.
+            skipped.append(str(campaign['id']))
+        elif metrics is None:
             failed.append({'campaign': str(campaign['id']), 'reason': 'Consulta falhou após retentativas.'})
         else:
             results.append({'conta': campaign['conta'], 'campanha': campaign['campaign'],
                             'id_conta': str(campaign['id']), 'data': ref, **metrics})
         time.sleep(float(os.getenv('SNOV_REQUEST_INTERVAL', '1')))
     crud.atualiza_registros(pd.DataFrame(results))
-    result = {'date': ref, 'expected': len(campaigns), 'collected': len(results), 'failed': failed}
+    result = {'date': ref, 'expected': len(campaigns), 'collected': len(results), 'failed': failed, 'skipped': skipped}
     if failed:
         raise CollectionError('Coleta incompleta; consulte as campanhas com falha.', result)
     return result
@@ -156,7 +182,9 @@ def atualiza_planilhas_controle():
                 frame['conta'] = frame['conta'].str.strip().str.lower()
             else:
                 raise ValueError('Sem dados para publicar; publicação anterior preservada.')
-            _replace_sheet(sheet.worksheet_by_title('registro'), frame)
+            if 'data' in frame.columns:
+                frame['data'] = pd.Series(_date_serials(frame['data']), index=frame.index, dtype=object)
+            _replace_sheet(sheet.worksheet_by_title('registro'), frame, date_columns=('data',))
             collected += 1
         except Exception as exc:
             print(f'Falha na planilha: {type(exc).__name__}', flush=True)
