@@ -4,7 +4,7 @@ from core.time import utcnow
 
 import pandas as pd
 from sqlalchemy.orm import Session
-from db.models import Dados, ContaSnovio, Campanha, Avanco
+from db.models import Dados, ContaSnovio, Campanha
 from db.session import engine
 
 # Lê o CSV
@@ -134,38 +134,6 @@ def get_campanhas_ativas(historico=False) -> pd.DataFrame:
             for campanha, conta in registros
         ]
         return pd.DataFrame(data)
-
-
-def cria_avanco(data: str, conta: str, quantidade: int) -> dict:
-    """Registra a quantidade de avanços do dia pra um cliente (substitui digitar
-    na aba "Avanços" do Sheet)."""
-    with Session(engine) as session:
-        registro = Avanco(data=data, conta=conta, quantidade=quantidade, criado_em=utcnow())
-        session.add(registro)
-        session.commit()
-        return {"id": registro.id, "data": registro.data, "conta": registro.conta, "quantidade": registro.quantidade}
-
-
-def lista_avancos(conta: str = None) -> list:
-    with Session(engine) as session:
-        query = session.query(Avanco)
-        if conta:
-            query = query.filter(Avanco.conta == conta)
-        registros = query.order_by(Avanco.data.desc()).all()
-        return [
-            {"id": r.id, "data": r.data, "conta": r.conta, "quantidade": r.quantidade}
-            for r in registros
-        ]
-
-
-def remove_avanco(avanco_id: int) -> bool:
-    with Session(engine) as session:
-        registro = session.get(Avanco, avanco_id)
-        if not registro:
-            return False
-        session.delete(registro)
-        session.commit()
-        return True
 
 
 def get_analise_cliente(cliente: str, inicio: str = None, fim: str = None) -> list:
