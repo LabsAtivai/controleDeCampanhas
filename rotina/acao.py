@@ -26,7 +26,7 @@ def extrai_campanhas(ids_selecionados=None):
         accounts = accounts[accounts['id'].isin(ids_selecionados)]
     if accounts.empty:
         raise CollectionError('Nenhuma conta ativa disponível.', {'expected': 0, 'collected': 0, 'failed': []})
-    succeeded, failed = [], []
+    succeeded, failed, skipped = [], [], []
     for i, row in enumerate(accounts.to_dict('records'), 1):
         print(f"[{i}/{len(accounts)}] Conta {row['Email Snovio']}", flush=True)
         try:
@@ -37,11 +37,16 @@ def extrai_campanhas(ids_selecionados=None):
                     raise ValueError('Campanhas duplicadas na origem.')
             succeeded.append(({'id': row['id'], 'email': row['Email'], 'email_snovio': row['Email Snovio']}, frame))
         except Exception as exc:
-            print(f"Falha na conta {row['Email Snovio']}: {type(exc).__name__}", flush=True)
-            failed.append(row['id'])
+            if getattr(exc, 'status', None) in {401, 403}:
+                # Credencial recusada pelo Snov: a conta não é sincronizável; ignorar e informar.
+                print(f"Conta {row['Email Snovio']} ignorada: credencial recusada (HTTP {exc.status}).", flush=True)
+                skipped.append(row['id'])
+            else:
+                print(f"Falha na conta {row['Email Snovio']}: {type(exc).__name__}", flush=True)
+                failed.append(row['id'])
         time.sleep(float(os.getenv('SNOV_REQUEST_INTERVAL', '1')))
     count = crud.sincroniza_campanhas(succeeded, active_ids=all_ids if ids_selecionados is None and not failed else None)
-    result = {'expected': len(accounts), 'collected': len(succeeded), 'campaigns': count, 'failed': failed}
+    result = {'expected': len(accounts), 'collected': len(succeeded), 'campaigns': count, 'failed': failed, 'skipped': skipped}
     if failed:
         raise CollectionError('Sincronização incompleta; reprocesse as contas com falha.', result)
     if enabled('GOOGLE_SHEETS_ENABLED', True):

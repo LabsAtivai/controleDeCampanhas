@@ -173,8 +173,9 @@ def create_app(test_config=None):
         integrations.append({'name': 'Registro de avanços', 'configured': bool(os.getenv('AVANCOS_FRONTEND_URL')),
             'message': 'Destino configurado.' if os.getenv('AVANCOS_FRONTEND_URL') else 'Endereço do sistema oficial ainda não configurado.'})
         sheets = enabled('GOOGLE_SHEETS_ENABLED', True)
-        integrations.append({'name': 'Google Sheets', 'configured': bool(sheets and os.getenv('GOOGLE_MASTER_SHEET_ID')),
-            'message': 'Publicação habilitada; valide acesso à planilha.' if sheets else 'Publicação desabilitada neste ambiente.'})
+        if sheets:  # desabilitado: o item some do painel
+            integrations.append({'name': 'Google Sheets', 'configured': bool(os.getenv('GOOGLE_MASTER_SHEET_ID')),
+                'message': 'Publicação habilitada; valide acesso à planilha.'})
         return jsonify(integrations=integrations)
 
     @app.post('/api/jobs/<job_id>/retry')

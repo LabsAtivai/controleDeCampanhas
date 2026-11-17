@@ -134,3 +134,23 @@ def test_auth_rejection_on_inactive_campaign_is_skipped_but_active_fails(monkeyp
         acao.extrai_dia_anterior_custom('2026-01-01')
     assert failure.value.result['skipped'] == ['100']
     assert [f['campaign'] for f in failure.value.result['failed']] == ['101']
+
+
+def test_campaign_sync_skips_rejected_credentials_but_fails_other_errors(monkeypatch):
+    class Rejected(Exception):
+        status = 401
+    accounts = pd.DataFrame([
+        {'id': 'a', 'Email': 'a@test.example', 'Email Snovio': 'a@test.example', 'Client id': 'ca', 'Client Secret': 's'},
+        {'id': 'b', 'Email': 'b@test.example', 'Email Snovio': 'b@test.example', 'Client id': 'cb', 'Client Secret': 's'}])
+    monkeypatch.setattr(acao.api, 'senhas', lambda ids=None: accounts)
+    monkeypatch.setattr(acao.time, 'sleep', lambda *_: None)
+    monkeypatch.setattr(acao.api, 'campanhas', lambda token: campaign(100))
+    monkeypatch.setattr(acao.api, 'gera_token', lambda cid, secret: (_ for _ in ()).throw(Rejected()) if cid == 'cb' else 'tok')
+    result = acao.extrai_campanhas()
+    assert result['collected'] == 1
+    assert result['skipped'] == ['b']
+    assert result['failed'] == []
+    monkeypatch.setattr(acao.api, 'gera_token', lambda cid, secret: (_ for _ in ()).throw(RuntimeError('boom')) if cid == 'cb' else 'tok')
+    with pytest.raises(acao.CollectionError) as failure:
+        acao.extrai_campanhas()
+    assert failure.value.result['failed'] == ['b']

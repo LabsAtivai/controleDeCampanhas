@@ -12,6 +12,7 @@ const status = ref({}),
   integrations = ref([]),
   loading = ref(true),
   error = ref('');
+const sheetsEnabled = computed(() => integrations.value.some((item) => item.name === 'Google Sheets'));
 const busy = ref(''),
   actionMode = ref('routine'),
   start = ref(todaySP(-1)),
@@ -247,7 +248,7 @@ onBeforeUnmount(() => clearInterval(interval));
               /><span>Extrair campanhas</span>
             </button>
           </div>
-          <div>
+          <div v-if="sheetsEnabled">
             <span class="routine-icon"><UiIcon name="Workflow" /></span>
             <div>
               <h3>Planilhas de controle</h3>

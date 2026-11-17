@@ -83,7 +83,7 @@ def get_squads_summary():
             'cliente': name, 'avancosHoje': totals.get(avancos_api._norm(name), 0) if totals is not None else None,
             'campaignId': r.id_conta, 'campanha': r.campanha, 'conta': r.conta, 'data': r.data,
             'stale': stale, 'totalContacted': r.total_contacted, 'emailsSent': r.emails_sent,
-            'delivered': r.delivered, 'emailOpens': r.email_opens, 'linkClicks': r.links_clicks, 'emailReplies': r.email_replies})
+            'delivered': r.delivered, 'emailOpens': r.email_opens, 'linkClicks': r.links_clicks or 0, 'emailReplies': r.email_replies})
     return squads
 
 def get_contas_resumo(inicio=None, fim=None):
