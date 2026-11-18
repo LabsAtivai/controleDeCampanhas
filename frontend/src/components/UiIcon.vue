@@ -38,6 +38,10 @@ import {
   Circle,
   CircleHelp,
   ArrowUpRight,
+  Columns3,
+  Trash2,
+  Undo2,
+  GripVertical,
 } from '@lucide/vue';
 defineProps({ name: String, size: { type: Number, default: 18 } });
 const icons = {
@@ -79,6 +83,10 @@ const icons = {
   Circle,
   CircleHelp,
   ArrowUpRight,
+  Columns3,
+  Trash2,
+  Undo2,
+  GripVertical,
 };
 </script>
 

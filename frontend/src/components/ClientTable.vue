@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { metricColumns, number, percent, dateLabel, sortRows } from '../lib/metrics.js';
+import { session } from '../lib/api.js';
 import StatusBadge from './StatusBadge.vue';
 import UiIcon from './UiIcon.vue';
 import EmptyState from './EmptyState.vue';
@@ -12,6 +13,7 @@ const props = defineProps({
   compact: Boolean,
   context: String,
 });
+const avancos = computed(() => Boolean(session.user?.avancosAtivo));
 const sortKey = ref(props.daily ? 'totalContacted' : 'emailsSent');
 const direction = ref('desc');
 const page = ref(1);
@@ -72,7 +74,7 @@ function collectDate(row) {
                 {{ column.label }}<UiIcon name="ArrowUpDown" :size="12" />
               </button>
             </th>
-            <th scope="col" class="number-cell">
+            <th v-if="avancos" scope="col" class="number-cell">
               <button @click="sort(daily ? 'avancosHoje' : 'avancos')">
                 Avanços<span class="th-context">{{ daily ? 'hoje' : 'no período' }}</span>
               </button>
@@ -81,7 +83,7 @@ function collectDate(row) {
               ><th scope="col" class="number-cell">Taxa abertura</th>
               <th scope="col" class="number-cell">Taxa resposta</th></template
             >
-            <th scope="col">Semáforo</th>
+            <th v-if="avancos" scope="col">Semáforo</th>
             <th v-if="!compact" scope="col">Última coleta</th>
             <th scope="col" class="row-end"><span class="sr-only">Abrir análise</span></th>
           </tr>
@@ -89,7 +91,9 @@ function collectDate(row) {
         <tbody id="gridBody">
           <template v-if="loading"
             ><tr v-for="i in 6" :key="i" class="skeleton-row" aria-hidden="true">
-              <td :colspan="columns.length + 7"><span class="skeleton"></span></td></tr
+              <td :colspan="columns.length + (avancos ? 7 : 5)">
+                <span class="skeleton"></span>
+              </td></tr
           ></template>
           <tr v-else v-for="row in visibleRows" :key="row.cliente" :data-client="row.cliente">
             <td class="client-column">
@@ -122,14 +126,14 @@ function collectDate(row) {
             <td v-for="column in columns" :key="column.key" class="number-cell">
               {{ number(row[column.key]) }}
             </td>
-            <td class="number-cell advance-value">
+            <td v-if="avancos" class="number-cell advance-value">
               {{ number(row[daily ? 'avancosHoje' : 'avancos']) }}
             </td>
             <template v-if="!daily && !compact"
               ><td class="number-cell">{{ percent(row.taxaAbertura) }}</td>
               <td class="number-cell">{{ percent(row.taxaResposta) }}</td></template
             >
-            <td><StatusBadge :status="row.statusAvanco" small /></td>
+            <td v-if="avancos"><StatusBadge :status="row.statusAvanco" small /></td>
             <td v-if="!compact" class="date-cell" :class="{ 'stale-date': row.stale }">
               <span v-if="row.stale" class="status-dot"></span>{{ collectDate(row) }}
             </td>

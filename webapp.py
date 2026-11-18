@@ -68,7 +68,7 @@ def create_app(test_config=None):
 
     @app.get('/<page>.html')
     def page(page):
-        if page not in {'index', 'dados', 'analise', 'login', 'equipe'}:
+        if page not in {'index', 'dados', 'analise', 'login', 'equipe', 'kanban'}:
             return jsonify(error='Página não encontrada.'), 404
         return send_from_directory(app.static_folder, page + '.html')
 
@@ -110,7 +110,8 @@ def create_app(test_config=None):
     @require_user()
     def me():
         return jsonify(email=g.actor, role=g.role, csrf=session.get('csrf'),
-            avancosUrl=os.getenv('AVANCOS_FRONTEND_URL', ''), semaforoTipos=os.getenv('SEMAFORO_TIPOS', 'Interessado'))
+            avancosUrl=os.getenv('AVANCOS_FRONTEND_URL', ''), semaforoTipos=os.getenv('SEMAFORO_TIPOS', 'Interessado'),
+            avancosAtivo=dashboard.avancos_ativo())
 
     @app.post('/api/auth/logout')
     @require_user()
@@ -172,7 +173,7 @@ def create_app(test_config=None):
             integrations.append({'name': label, 'configured': ok, 'message': message})
         integrations.append({'name': 'Registro de avanços', 'configured': bool(os.getenv('AVANCOS_FRONTEND_URL')),
             'message': 'Destino configurado.' if os.getenv('AVANCOS_FRONTEND_URL') else 'Endereço do sistema oficial ainda não configurado.'})
-        sheets = enabled('GOOGLE_SHEETS_ENABLED', True)
+        sheets = enabled('GOOGLE_SHEETS_ENABLED', False)
         if sheets:  # desabilitado: o item some do painel
             integrations.append({'name': 'Google Sheets', 'configured': bool(os.getenv('GOOGLE_MASTER_SHEET_ID')),
                 'message': 'Publicação habilitada; valide acesso à planilha.'})
@@ -268,6 +269,37 @@ def create_app(test_config=None):
         return jsonify(squads=data, warnings=avancos_api.warnings(), geradoEm=utcnow().isoformat() + 'Z',
             metricScope='Última coleta por campanha; datas podem variar. Avanços de hoje.')
 
+    @app.get('/api/kanban')
+    @require_user(admin=True)
+    def kanban():
+        return jsonify(colunas=dashboard.get_kanban(), equipes=dashboard.SQUADS, excluidos=dashboard.EXCLUDED)
+
+    def kanban_change(action, **options):
+        body = json_object(request)
+        accounts = body.get('contas')
+        if not isinstance(accounts, list) or not all(isinstance(a, str) for a in accounts):
+            raise ValueError('Informe a lista de contas do cliente.')
+        saved = dashboard.set_override(accounts, actor=g.actor, **{k: body.get(k) if v is None else v for k, v in options.items()})
+        audit(g.actor, action, {'contas': saved, **{k: body.get(k) if v is None else v for k, v in options.items()}})
+        return jsonify(saved=len(saved))
+
+    @app.post('/api/kanban/mover')
+    @require_user(admin=True)
+    def kanban_move():
+        if not isinstance(json_object(request).get('squad'), str):
+            raise ValueError('Informe a equipe de destino.')
+        return kanban_change('kanban.moved', squad=None)
+
+    @app.post('/api/kanban/excluir')
+    @require_user(admin=True)
+    def kanban_exclude():
+        return kanban_change('kanban.excluded', excluded=True)
+
+    @app.post('/api/kanban/restaurar')
+    @require_user(admin=True)
+    def kanban_restore():
+        return kanban_change('kanban.restored', excluded=False)
+
     @app.get('/api/analise-contas')
     @require_user()
     def accounts():
@@ -285,8 +317,11 @@ def create_app(test_config=None):
         start, end = request.args.get('inicio'), request.args.get('fim')
         period(start, end)
         days = crud.get_analise_cliente(client, start, end)
-        statuses = dashboard.optional(avancos_api.status_por_cliente)
-        status = 'indisponivel' if statuses is None else statuses.get(avancos_api._norm(client), 'vermelho') if avancos_api.tem_vinculo(client) else 'sem_vinculo'
+        if not dashboard.avancos_ativo():
+            status = None
+        else:
+            statuses = dashboard.optional(avancos_api.status_por_cliente)
+            status = 'indisponivel' if statuses is None else statuses.get(avancos_api._norm(client), 'vermelho') if avancos_api.tem_vinculo(client) else 'sem_vinculo'
         return jsonify(cliente=client, dias=days, statusAvanco=status, warnings=avancos_api.warnings())
 
     @app.route('/api/avancos', methods=['GET', 'POST', 'DELETE'])

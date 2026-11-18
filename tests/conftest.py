@@ -18,6 +18,7 @@ os.environ['ALLOW_LEGACY_TOKEN'] = 'false'
 os.environ['ADMIN_EMAIL'] = ''
 os.environ['ADMIN_PASSWORD'] = ''
 os.environ['GOOGLE_SHEETS_ENABLED'] = 'false'
+os.environ['AVANCOS_PANEL_ENABLED'] = 'true'
 os.environ['SNOV_REQUEST_INTERVAL'] = '0'
 os.environ['ALERT_WEBHOOK_URL'] = ''
 

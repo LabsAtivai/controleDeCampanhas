@@ -144,6 +144,7 @@ def get_analise_cliente(cliente: str, inicio: str = None, fim: str = None) -> li
     from core.validation import period
     period(inicio, fim)
     from sqlalchemy import func
+    from core.config import enabled
     from db import avancos_api
 
     contas = avancos_api.contas_do_cliente(cliente) or [cliente]
@@ -165,6 +166,8 @@ def get_analise_cliente(cliente: str, inicio: str = None, fim: str = None) -> li
         linhas_dados = query_dados.group_by(Dados.data).order_by(Dados.data).all()
 
     try:
+        if not enabled('AVANCOS_PANEL_ENABLED', False):
+            raise avancos_api.IntegrationUnavailable('Avanços desligados no painel.')
         avancos_por_dia = avancos_api.avancos_dia_do_cliente(cliente, inicio, fim)
         avancos_available = True
     except avancos_api.IntegrationUnavailable:

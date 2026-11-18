@@ -11,7 +11,7 @@ export default defineConfig(({ command }) => ({
     assetsDir: 'bundles',
     rollupOptions: {
       input: Object.fromEntries(
-        ['index', 'dados', 'analise', 'login', 'equipe'].map((name) => [
+        ['index', 'dados', 'analise', 'login', 'equipe', 'kanban'].map((name) => [
           name,
           resolve(import.meta.dirname, `${name}.html`),
         ]),

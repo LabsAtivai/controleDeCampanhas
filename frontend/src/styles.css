@@ -2572,3 +2572,127 @@ h2 {
     scroll-behavior: auto !important;
   }
 }
+
+/* Quadro de equipes */
+.kanban-board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(250px, 1fr);
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  align-items: start;
+}
+.kanban-column {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px;
+  min-height: 220px;
+  transition:
+    border-color 0.15s var(--ease),
+    background 0.15s var(--ease);
+}
+.kanban-column > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px 10px;
+}
+.kanban-column h2 {
+  font-size: 13px;
+  margin: 0;
+  color: var(--ink);
+}
+.kanban-over {
+  border-color: #8dacf0;
+  background: var(--blue-soft);
+}
+.kanban-trash {
+  border-style: dashed;
+}
+.kanban-trash.kanban-over {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+.kanban-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.kanban-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 9px 10px;
+  cursor: grab;
+}
+.kanban-card:active {
+  cursor: grabbing;
+}
+.kanban-dragging {
+  opacity: 0.45;
+}
+.kanban-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.kanban-card-head strong {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kanban-grip {
+  color: var(--muted);
+  flex: none;
+}
+.kanban-card p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.kanban-card .kanban-meta {
+  font-size: 11px;
+}
+.kanban-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.kanban-actions select {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  font-size: 12px;
+}
+.kanban-delete {
+  color: var(--danger);
+}
+.kanban-confirm {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.kanban-danger {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+.kanban-empty {
+  margin: 8px 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.kanban-board:focus {
+  outline: none;
+}

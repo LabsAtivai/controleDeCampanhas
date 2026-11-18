@@ -39,17 +39,9 @@ async function login() {
           mais preciso.
         </h1>
         <p>
-          Campanhas, resultados e avanços.<br />
+          Campanhas e resultados.<br />
           O contexto que conecta os números à sua rotina.
         </p>
-        <div class="login-signal-board">
-          <span>O estado de cada cliente, à vista.</span>
-          <div>
-            <span class="signal-item"><i class="dot-success"></i>Em dia</span
-            ><span class="signal-item"><i class="dot-warning"></i>Atenção</span
-            ><span class="signal-item"><i class="dot-danger"></i>Sem avanço</span>
-          </div>
-        </div>
       </div>
       <footer>Controle de Campanhas<span>Feito para o trabalho da equipe.</span></footer>
     </section>

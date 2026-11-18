@@ -37,6 +37,7 @@ const loading = ref(true),
 let version = 0;
 const customer = computed(() => String(route.query.cliente || route.query.conta || ''));
 const rows = computed(() => summary.value[selected.value] || []);
+const avancos = computed(() => Boolean(session.user?.avancosAtivo));
 const visible = computed(() => filteredRows(rows.value, search.value, status.value));
 const allCustomers = computed(() =>
   [
@@ -59,24 +60,32 @@ const metrics = computed(() =>
         { label: 'Enviados', context: 'acumulado', value: days.value.at(-1)?.cumEmailsSent },
         { label: 'Aberturas', context: 'acumulado', value: days.value.at(-1)?.cumEmailOpens },
         { label: 'Respostas', context: 'acumulado', value: days.value.at(-1)?.cumEmailReplies },
-        {
-          label: 'Avanços',
-          context: 'no período',
-          value: total(days.value, 'avancos'),
-          emphasis: true,
-        },
+        ...(avancos.value
+          ? [
+              {
+                label: 'Avanços',
+                context: 'no período',
+                value: total(days.value, 'avancos'),
+                emphasis: true,
+              },
+            ]
+          : []),
       ]
     : [
         ...metricColumns.map((column) => ({
           label: column.label,
           value: total(rows.value, column.key),
         })),
-        {
-          label: 'Avanços',
-          context: 'no período',
-          value: total(rows.value, 'avancos'),
-          emphasis: true,
-        },
+        ...(avancos.value
+          ? [
+              {
+                label: 'Avanços',
+                context: 'no período',
+                value: total(rows.value, 'avancos'),
+                emphasis: true,
+              },
+            ]
+          : []),
       ],
 );
 const chartSeries = [
@@ -159,7 +168,9 @@ onMounted(async () => {
       :title="customer || 'Análise por cliente'"
       :subtitle="
         customer
-          ? 'Evolução das campanhas e avanços no período selecionado.'
+          ? avancos
+            ? 'Evolução das campanhas e avanços no período selecionado.'
+            : 'Evolução das campanhas no período selecionado.'
           : 'Do panorama do squad ao detalhe que ajuda a decidir.'
       "
       ><button class="button button-secondary" :disabled="loading" @click="load">
@@ -195,6 +206,7 @@ onMounted(async () => {
         @update:model-value="chooseSquad" /><MetricBand
         :items="metrics"
         :loading="loading" /><TrafficFilter
+        v-if="avancos"
         v-model="status"
         :rows="rows"
         :loading="loading"
@@ -205,7 +217,8 @@ onMounted(async () => {
             <h2>
               Desempenho por cliente<span class="count-label">{{ number(rows.length) }}</span>
             </h2>
-            <p>O volume é do período. O semáforo mantém sua janela de três dias.</p>
+            <p v-if="avancos">O volume é do período. O semáforo mantém sua janela de três dias.</p>
+            <p v-else>O volume é do período selecionado.</p>
           </div>
           <div class="table-tools">
             <label class="search-field"
@@ -256,10 +269,10 @@ onMounted(async () => {
         /></section></template
     ><template v-else
       ><div class="customer-context">
-        <div>
+        <div v-if="avancos">
           <span class="context-label">Semáforo atual</span><StatusBadge :status="customerStatus" />
         </div>
-        <p>
+        <p v-if="avancos">
           3 dias fechados, sem hoje<span
             >Tipos considerados: {{ session.user?.semaforoTipos || 'Interessado' }}</span
           >
@@ -276,6 +289,7 @@ onMounted(async () => {
           title="Evolução acumulada"
           description="Envios, aberturas e respostas, ao longo do período."
         /><MetricChart
+          v-if="avancos"
           :rows="days"
           :series="barSeries"
           bars
@@ -307,7 +321,7 @@ onMounted(async () => {
                   >
                     {{ column.label }}
                   </th>
-                  <th scope="col" class="number-cell">Avanços</th>
+                  <th v-if="avancos" scope="col" class="number-cell">Avanços</th>
                   <th scope="col" class="number-cell">Enviados acum.</th>
                   <th scope="col" class="number-cell">Aberturas acum.</th>
                   <th scope="col" class="number-cell">Respostas acum.</th>
@@ -319,7 +333,9 @@ onMounted(async () => {
                   <td v-for="column in metricColumns" :key="column.key" class="number-cell">
                     {{ number(day[column.key]) }}
                   </td>
-                  <td class="number-cell advance-value">{{ number(day.avancos) }}</td>
+                  <td v-if="avancos" class="number-cell advance-value">
+                    {{ number(day.avancos) }}
+                  </td>
                   <td class="number-cell">{{ number(day.cumEmailsSent) }}</td>
                   <td class="number-cell">{{ number(day.cumEmailOpens) }}</td>
                   <td class="number-cell">{{ number(day.cumEmailReplies) }}</td>

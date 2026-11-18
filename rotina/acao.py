@@ -49,7 +49,7 @@ def extrai_campanhas(ids_selecionados=None):
     result = {'expected': len(accounts), 'collected': len(succeeded), 'campaigns': count, 'failed': failed, 'skipped': skipped}
     if failed:
         raise CollectionError('Sincronização incompleta; reprocesse as contas com falha.', result)
-    if enabled('GOOGLE_SHEETS_ENABLED', True):
+    if enabled('GOOGLE_SHEETS_ENABLED', False):
         atualiza_aba_campanhas_master()
     return result
 
@@ -169,7 +169,7 @@ def extrai_dia_anterior_custom(data=None, contas_filtro=None, credenciais=None):
     return result
 
 def atualiza_planilhas_controle():
-    if not enabled('GOOGLE_SHEETS_ENABLED', True):
+    if not enabled('GOOGLE_SHEETS_ENABLED', False):
         return {'skipped': True, 'reason': 'Publicação Google Sheets desabilitada.'}
     client = google_client()
     master = client.open_by_key(master_sheet_id())

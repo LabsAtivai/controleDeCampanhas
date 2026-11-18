@@ -264,8 +264,11 @@ def avancos_por_cliente_dia(inicio: str = None, fim: str = None, so_semaforo: bo
 
     def carrega():
         saida = defaultdict(lambda: defaultdict(int))
-        cursor = None
+        cursor, paginas = None, 0
         while True:
+            paginas += 1
+            if paginas > 200:
+                raise IntegrationUnavailable('Paginação de avanços incompleta.')
             params = {'dataInicio': inicio, 'dataFim': fim}
             if cursor:
                 params['cursor'] = cursor

@@ -82,3 +82,70 @@ def test_browser_login_analysis_xss_mobile_and_operations(app, monkeypatch, tmp_
         assert page.locator('#users').inner_text().find('admin@example.test') >= 0
         assert not errors
         browser.close()
+
+
+@pytest.mark.browser
+def test_browser_kanban_move_drag_exclude_restore(app, monkeypatch):
+    save_user('admin@example.test', 'Very-Strong-Test-Password', 'admin')
+    other = metric('200')
+    other['conta'] = 'b@test.example'
+    crud.atualiza_registros(pd.DataFrame([metric(), other]))
+    monkeypatch.setattr(avancos_api, 'cliente_da_conta', lambda account: 'Cliente A' if account == 'a@test.example' else 'Cliente B')
+    monkeypatch.setattr(avancos_api, 'total_por_cliente', lambda *args: {})
+    monkeypatch.setattr(avancos_api, 'status_por_cliente', lambda: {})
+    monkeypatch.setattr(avancos_api, 'tem_vinculo', lambda *args: True)
+    with site(app) as url, sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True, channel='chromium', executable_path=os.getenv('BROWSER_EXECUTABLE'))
+        page = browser.new_page(viewport={'width': 1280, 'height': 800})
+        errors = []
+        page.on('pageerror', lambda error: errors.append(str(error)))
+        login_ui(page, url)
+        page.goto(url + '/kanban.html')
+        column = lambda name: page.locator('section.kanban-column', has=page.get_by_role('heading', name=name, exact=True))
+        expect(column('Sem squad').get_by_text('Cliente A', exact=True)).to_be_visible()
+        # mover pelo seletor (teclado/leitor de tela)
+        page.get_by_label('Mover Cliente A para outra equipe').select_option('Onboarding')
+        expect(column('Onboarding').get_by_text('Cliente A', exact=True)).to_be_visible()
+        # arrastar e soltar
+        column('Sem squad').get_by_text('Cliente B', exact=True).drag_to(column('Geral'))
+        expect(column('Geral').get_by_text('Cliente B', exact=True)).to_be_visible()
+        # o ajuste persiste após recarregar
+        page.reload()
+        expect(column('Onboarding').get_by_text('Cliente A', exact=True)).to_be_visible()
+        # excluir exige confirmação
+        page.get_by_label('Excluir Cliente A').click()
+        expect(column('Onboarding').get_by_text('Cliente A', exact=True)).to_be_visible()
+        page.get_by_role('button', name='Confirmar exclusão').click()
+        expect(column('Excluídos').get_by_text('Cliente A', exact=True)).to_be_visible()
+        # excluído some da visão geral e volta ao restaurar
+        page.goto(url + '/dados.html')
+        page.get_by_role('button', name='Geral', exact=True).click()
+        expect(page.get_by_text('Cliente A', exact=True)).to_have_count(0)
+        page.goto(url + '/kanban.html')
+        page.get_by_label('Restaurar Cliente A').click()
+        expect(column('Onboarding').get_by_text('Cliente A', exact=True)).to_be_visible()
+        assert not errors
+        browser.close()
+
+
+@pytest.mark.browser
+def test_browser_advances_and_traffic_light_hidden_when_off(app, monkeypatch):
+    save_user('admin@example.test', 'Very-Strong-Test-Password', 'admin')
+    crud.atualiza_registros(pd.DataFrame([metric()]))
+    monkeypatch.setenv('AVANCOS_PANEL_ENABLED', 'false')
+    monkeypatch.setattr(avancos_api, 'cliente_da_conta', lambda account: 'Cliente A')
+    monkeypatch.setattr(avancos_api, 'contas_do_cliente', lambda cliente: ['a@test.example'])
+    with site(app) as url, sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True, channel='chromium', executable_path=os.getenv('BROWSER_EXECUTABLE'))
+        page = browser.new_page(viewport={'width': 1280, 'height': 800})
+        login_ui(page, url)
+        page.get_by_role('button', name='Sem squad', exact=True).click()
+        expect(page.get_by_text('Cliente A', exact=True)).to_be_visible()
+        for text in ('Registrar avanço', 'Semáforo', 'Avanços', 'Indisponível'):
+            expect(page.get_by_text(text)).to_have_count(0)
+        page.goto(url + '/analise.html?cliente=Cliente%20A')
+        page.get_by_role('button', name='Geral', exact=True).click()
+        expect(page.get_by_text('Dia a dia')).to_be_visible()
+        for text in ('Semáforo atual', 'Avanços por dia', 'Avanços'):
+            expect(page.get_by_text(text)).to_have_count(0)
+        browser.close()

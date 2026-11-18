@@ -152,6 +152,17 @@ class SquadMapping(Base):
     squad = Column(String(100), nullable=False)
 
 
+class ContaOverride(Base):
+    """Ajuste manual feito no kanban: troca a equipe de uma conta ou a oculta do painel.
+    Nunca apaga dados coletados; `excluded` é reversível."""
+    __tablename__ = 'painel_conta_override'
+    conta = Column(String(255), primary_key=True)
+    squad = Column(String(100), nullable=True)
+    excluded = Column(Boolean, nullable=False, default=False)
+    updated_by = Column(String(255), nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+
 class ClientAlias(Base):
     __tablename__ = 'painel_client_aliases'
     alias = Column(String(255), primary_key=True)

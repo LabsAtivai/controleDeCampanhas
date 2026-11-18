@@ -13,7 +13,7 @@ from pathlib import Path
 from sqlalchemy import DateTime, Date, select, func
 from sqlalchemy.orm import Session
 
-from core.config import ROOT
+from core.config import ROOT, enabled
 from db.models import Base, User
 from db.session import engine
 
@@ -138,7 +138,7 @@ def main():
             time.sleep(86400)
     elif args.command == 'check':
         from db.migrations import ready
-        print(json.dumps({'database': ready(), 'google_enabled': os.getenv('GOOGLE_SHEETS_ENABLED', 'true'),
+        print(json.dumps({'database': ready(), 'google_enabled': enabled('GOOGLE_SHEETS_ENABLED', False),
             'credentials_configured': bool(os.getenv('CREDENTIALS_API_URL') and os.getenv('CREDENTIALS_API_KEY')),
             'advances_configured': bool(os.getenv('AVANCOS_API_URL')), 'secret_configured': len(os.getenv('SECRET_KEY', '')) >= 32}))
 

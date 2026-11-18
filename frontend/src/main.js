@@ -8,6 +8,7 @@ import DashboardView from './views/DashboardView.vue';
 import AnalysisView from './views/AnalysisView.vue';
 import OperationsView from './views/OperationsView.vue';
 import TeamView from './views/TeamView.vue';
+import KanbanView from './views/KanbanView.vue';
 import LoginView from './views/LoginView.vue';
 
 localStorage.removeItem('painel_api_token');
@@ -30,6 +31,11 @@ const router = createRouter({
       path: '/index.html',
       component: OperationsView,
       meta: { title: 'Operação de dados', section: 'Administração', admin: true },
+    },
+    {
+      path: '/kanban.html',
+      component: KanbanView,
+      meta: { title: 'Quadro de equipes', section: 'Administração', admin: true },
     },
     {
       path: '/equipe.html',

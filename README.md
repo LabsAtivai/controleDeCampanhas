@@ -77,6 +77,7 @@ use o banco atual em vez de criar uma base vazia.
 | `AVANCOS_API_URL`, `AVANCOS_API_KEY` | API oficial de avanços; chave opcional conforme contrato da origem |
 | `AVANCOS_API_KEY_HEADER` | Header da chave, padrão `X-API-Key` |
 | `AVANCOS_FRONTEND_URL` | Destino do botão “Registrar avanço” |
+| `AVANCOS_PANEL_ENABLED` | `false` (padrão): o painel não mostra avanços nem semáforo e não consulta totais, status nem avanços por dia; `true` reativa. O nome dos clientes continua vindo do cadastro de credenciais do sistema de avanços, por isso `AVANCOS_API_URL` e `AVANCOS_API_KEY` seguem obrigatórias |
 | `SEMAFORO_TIPOS` | Tipos que contam, separados por vírgula; padrão `Interessado` |
 | `LISTAS_SQUAD_DATABASE_URL` | Conexão opcional, somente leitura, para o cadastro externo de squads |
 | `SQUAD_MAPPING_TABLE` | Tabela externa, padrão `relatoriolistas.listas_squad` |

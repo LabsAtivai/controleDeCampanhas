@@ -53,10 +53,20 @@ const squads = computed(() =>
   ),
 );
 const rows = computed(() => squads.value[selected.value] || []);
+const avancos = computed(() => Boolean(session.user?.avancosAtivo));
 const visible = computed(() => filteredRows(rows.value, search.value, status.value));
 const metrics = computed(() => [
   ...metricColumns.map((column) => ({ label: column.label, value: total(rows.value, column.key) })),
-  { label: 'Avanços', context: 'hoje', value: total(rows.value, 'avancosHoje'), emphasis: true },
+  ...(avancos.value
+    ? [
+        {
+          label: 'Avanços',
+          context: 'hoje',
+          value: total(rows.value, 'avancosHoje'),
+          emphasis: true,
+        },
+      ]
+    : []),
 ]);
 async function load() {
   const current = ++version;
@@ -79,7 +89,7 @@ async function load() {
   } else {
     analysis.value = {};
     notes.push(
-      'Não foi possível consultar o semáforo. As métricas de campanha disponíveis continuam visíveis.',
+      'Não foi possível consultar o resumo por cliente. As métricas de campanha disponíveis continuam visíveis.',
     );
   }
   warnings.value = [...new Set(notes)];
@@ -113,7 +123,7 @@ onMounted(load);
       subtitle="Cada campanha no seu contexto. Cada cliente, com o próximo passo à vista."
       ><button class="button button-secondary" :disabled="loading" @click="load">
         <UiIcon name="RefreshCw" :class="{ spinning: loading }" :size="16" />Atualizar</button
-      ><button class="button button-primary" @click="advances">
+      ><button v-if="avancos" class="button button-primary" @click="advances">
         <UiIcon name="Plus" :size="17" />Registrar avanço</button
       ><template #meta
         ><p class="update-stamp" v-if="updated">
@@ -132,6 +142,7 @@ onMounted(load);
       >
     </div>
     <TrafficFilter
+      v-if="avancos"
       v-model="status"
       :rows="rows"
       :loading="loading"
@@ -143,7 +154,13 @@ onMounted(load);
           <h2>
             Clientes do squad<span class="count-label">{{ number(rows.length) }}</span>
           </h2>
-          <p>Volume de campanha e semáforo, lado a lado.</p>
+          <p>
+            {{
+              avancos
+                ? 'Volume de campanha e semáforo, lado a lado.'
+                : 'Volume de campanha por cliente.'
+            }}
+          </p>
         </div>
         <label class="search-field"
           ><UiIcon name="Search" :size="17" /><input
@@ -168,7 +185,7 @@ onMounted(load);
       </div>
       <ClientTable :rows="visible" :loading="loading" daily :context="selected" />
     </section>
-    <div class="page-footnote">
+    <div v-if="avancos" class="page-footnote">
       <UiIcon name="Info" :size="15" />
       <p>
         O semáforo considera os tipos configurados no sistema nos três dias fechados anteriores a

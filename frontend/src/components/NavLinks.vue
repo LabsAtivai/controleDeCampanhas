@@ -15,6 +15,8 @@ defineEmits(['navigate']);
       ><span class="nav-group-label nav-group-admin">Administração</span
       ><RouterLink to="/index.html" @click="$emit('navigate')"
         ><UiIcon name="Workflow" /><span>Operação de dados</span></RouterLink
+      ><RouterLink to="/kanban.html" @click="$emit('navigate')"
+        ><UiIcon name="Columns3" /><span>Quadro de equipes</span></RouterLink
       ><RouterLink to="/equipe.html" @click="$emit('navigate')"
         ><UiIcon name="Users" /><span>Equipe e acessos</span></RouterLink
       ></template
