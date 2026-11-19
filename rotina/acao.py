@@ -42,7 +42,7 @@ def extrai_campanhas(ids_selecionados=None):
                 print(f"Conta {row['Email Snovio']} ignorada: credencial recusada (HTTP {exc.status}).", flush=True)
                 skipped.append(row['id'])
             else:
-                print(f"Falha na conta {row['Email Snovio']}: {type(exc).__name__}", flush=True)
+                print(f"Falha na conta {row['Email Snovio']}: {type(exc).__name__} (HTTP {getattr(exc, 'status', None) or 'n/d'}): {exc}", flush=True)
                 failed.append(row['id'])
         time.sleep(float(os.getenv('SNOV_REQUEST_INTERVAL', '1')))
     count = crud.sincroniza_campanhas(succeeded, active_ids=all_ids if ids_selecionados is None and not failed else None)

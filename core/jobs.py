@@ -105,8 +105,25 @@ def execute(action, params):
     if action == 'planilhas':
         return acao.atualiza_planilhas_controle()
     if action == 'diario':
-        return {'campanhas': acao.extrai_campanhas(), 'metricas': acao.extrai_dia_anterior_custom(params['data']) if params.get('data') else acao.extrai_dia_anterior(),
-                'planilhas': acao.atualiza_planilhas_controle()}
+        # Falha parcial na sincronização de campanhas não pode bloquear as métricas do dia.
+        result, errors = {}, []
+        steps = (('campanhas', lambda: acao.extrai_campanhas()),
+                 ('metricas', lambda: acao.extrai_dia_anterior_custom(params['data']) if params.get('data') else acao.extrai_dia_anterior()),
+                 ('planilhas', lambda: acao.atualiza_planilhas_controle()))
+        for name, step in steps:
+            try:
+                result[name] = step()
+            except acao.CollectionError as exc:
+                result[name] = exc.result
+                errors.append(f'{name}: {exc}')
+            except Exception as exc:
+                result[name] = {'error': redact(exc)}
+                errors.append(f'{name}: {redact(exc)}')
+        if errors:
+            collected = any(isinstance(v, dict) and v.get('collected', 0) > 0 for v in result.values())
+            error = acao.CollectionError('; '.join(errors), {**result, 'collected': 1 if collected else 0})
+            raise error
+        return result
     raise ValueError('Ação desconhecida.')
 
 
