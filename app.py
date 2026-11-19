@@ -10,7 +10,7 @@ from db.session import engine
 
 def tick(now=None):
     now = now or datetime.now(ZoneInfo('America/Sao_Paulo'))
-    if now.hour < 1:
+    if (now.hour, now.minute) < (0, 30):
         return []
     target = now.date() - timedelta(days=1)
     with Session(engine) as db:
